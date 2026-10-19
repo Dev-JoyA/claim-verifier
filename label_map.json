@@ -1,0 +1,27 @@
+{
+  "fully_supported": {
+    "dashboard": "full_support",
+    "decided": true
+  },
+  "mostly_supported": {
+    "dashboard": "partial_support",
+    "decided": false
+  },
+  "partially_supported": {
+    "dashboard": "partial_support",
+    "decided": true
+  },
+  "not_supported": {
+    "dashboard": "unsupported",
+    "decided": true
+  },
+  "contradicted": {
+    "dashboard": "contradicted",
+    "decided": true
+  },
+  "source_unavailable": {
+    "dashboard": null,
+    "sourceAccess": "inaccessible",
+    "decided": true
+  }
+}

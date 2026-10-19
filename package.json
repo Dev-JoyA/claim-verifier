@@ -1,0 +1,22 @@
+{
+  "name": "claim-verifier",
+  "version": "0.1.0",
+  "description": "Prototype: checks whether a cited source supports a Wikipedia claim, and scores that against human labels.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test",
+    "new": "node src/newClaim.js",
+    "validate": "node src/validate.js",
+    "evaluate": "node src/evaluate.js",
+    "check": "node src/check.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^3.9.10"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "labels": [
+    "fully_supported",
+    "mostly_supported",
+    "partially_supported",
+    "not_supported",
+    "contradicted",
+    "source_unavailable"
+  ],
+  "labelOrder": [
+    "contradicted",
+    "not_supported",
+    "partially_supported",
+    "mostly_supported",
+    "fully_supported"
+  ],
+  "matchTypes": ["explicit", "paraphrase", "inferred", "absent", "contradicted"],
+  "supportedMatchTypes": ["explicit", "paraphrase"],
+  "rules": [
+    "Read the paragraph and the cited source before judging.",
+    "Before judging, state what the claim is meant to say, using the surrounding paragraph.",
+    "List implied propositions the paragraph attaches to the claim (mark origin: context).",
+    "Split the claim into sub-claims and judge each against the source separately.",
+    "Different wording is not a reason to lower a rating when the meaning is the same.",
+    "Judge only what the cited source says, not whether the claim is true in general.",
+    "Evidence quotes must be exact, with a location. If none exists, return absent.",
+    "If the source cannot be read, return source_unavailable. Never guess.",
+    "If the claim is a quote, ensure the quote is copied word for word from the source"
+  ]
+}
