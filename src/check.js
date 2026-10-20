@@ -45,4 +45,9 @@ async function main() {
 }
 
 const startedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (startedDirectly) main();
+if (startedDirectly) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}

@@ -42,7 +42,6 @@ export async function run(client, conditions, items = loadGold(), readSourceText
   return report;
 }
 
-
 async function main() {
   const client = makeClient();
   const conditions = getFlag("conditions", "baseline,context,full").split(",");
@@ -63,4 +62,9 @@ async function main() {
 }
 
 const startedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (startedDirectly) main();
+if (startedDirectly) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}

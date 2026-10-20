@@ -9,6 +9,10 @@ import { checkItem } from "../src/validate.js";
 import { loadGold } from "../src/gold.js";
 import { run, agree } from "../src/evaluate.js";
 import { checkClaims } from "../src/check.js";
+import { GeminiClient, OllamaClient, CachedClient } from "../src/clients.js";
+import { writePrompts } from "../src/prompts.js";
+import { makeClient } from "../src/cli.js";
+import { buildPrompt } from "../src/verifier.js";
 
 const sub = (match_type, weight = "core") => ({ match_type, weight, text: "x" });
 const fakeAi = (reply) => ({
@@ -147,4 +151,98 @@ test("validate does not require my_rating in unrated mode", () => {
   };
   assert.equal(checkItem(unrated, "text", false).errors.length, 0);
   assert.ok(checkItem(unrated, "text", true).errors.some((e) => e.includes("my_rating")));
+});
+
+test("GeminiClient sends the prompt, reads the text, and retries after a 429", async () => {
+  process.env.GEMINI_API_KEY = "test-key";
+  const calls = [];
+  const responses = [
+    { status: 429, ok: false, text: async () => "slow down" },
+    {
+      status: 200,
+      ok: true,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: "hello" }] } }] }),
+    },
+  ];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    return responses[calls.length - 1];
+  };
+  const client = new GeminiClient("some-model", { fetchImpl, sleep: async () => {} });
+
+  assert.equal(await client.complete("my prompt"), "hello");
+  assert.equal(calls.length, 2);
+  assert.ok(calls[0].url.includes("some-model:generateContent"));
+  assert.equal(calls[0].options.headers["x-goog-api-key"], "test-key");
+  assert.equal(JSON.parse(calls[0].options.body).contents[0].parts[0].text, "my prompt");
+});
+
+test("CachedClient calls the AI once per key and reuses the saved reply", async () => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), "replies-"));
+  let calls = 0;
+  const inner = {
+    complete: async () => {
+      calls++;
+      return "reply text";
+    },
+  };
+  const client = new CachedClient(inner, folder);
+
+  assert.equal(await client.complete("p", "full_claim-001"), "reply text");
+  assert.equal(await client.complete("p", "full_claim-001"), "reply text");
+  assert.equal(calls, 1);
+});
+
+test("OllamaClient posts to the local server and reads the response field", async () => {
+  let seen;
+  const fetchImpl = async (url, options) => {
+    seen = { url, body: JSON.parse(options.body) };
+    return { ok: true, json: async () => ({ response: "local reply" }) };
+  };
+  const client = new OllamaClient("tiny-model", { fetchImpl });
+
+  assert.equal(await client.complete("my prompt"), "local reply");
+  assert.equal(seen.url, "http://localhost:11434/api/generate");
+  assert.equal(seen.body.model, "tiny-model");
+  assert.equal(seen.body.prompt, "my prompt");
+  assert.equal(seen.body.stream, false);
+  assert.equal(seen.body.format, "json");
+});
+
+test("OllamaClient explains when the server is not running", async () => {
+  const fetchImpl = async () => {
+    throw new Error("connection refused");
+  };
+  const client = new OllamaClient("tiny-model", { fetchImpl });
+  await assert.rejects(() => client.complete("p"), /Could not reach Ollama/);
+});
+
+test("writePrompts writes only the prompts that still need a reply", () => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), "manual-"));
+  const items = [
+    { ...item, id: "claim-001" },
+    { ...item, id: "claim-002" },
+    { ...item, id: "claim-003" },
+  ];
+  const sources = { "claim-001": "text one", "claim-002": "text two", "claim-003": "" };
+  fs.writeFileSync(path.join(folder, "full_claim-002.reply.json"), "{}");
+
+  const pending = writePrompts(["full"], items, (it) => sources[it.id], folder);
+
+  assert.deepEqual(pending, [
+    { prompt: "full_claim-001.prompt.txt", reply: "full_claim-001.reply.json" },
+  ]);
+  const written = fs.readFileSync(path.join(folder, "full_claim-001.prompt.txt"), "utf8");
+  assert.equal(written, buildPrompt(items[0], "text one", "full"));
+});
+
+test("makeClient takes its defaults from environment variables", () => {
+  process.env.AI_CLIENT = "bogus";
+  assert.throws(() => makeClient(), /Unknown client "bogus"/);
+
+  process.env.AI_CLIENT = "ollama";
+  delete process.env.AI_MODEL;
+  assert.throws(() => makeClient(), /Pass --model/);
+
+  delete process.env.AI_CLIENT;
 });

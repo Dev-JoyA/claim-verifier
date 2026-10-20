@@ -8,7 +8,7 @@ export function checkItem(item, sourceText, requireRating = true) {
   const errors = [];
   const warnings = [];
 
-    const required = requireRating
+  const required = requireRating
     ? REQUIRED_FIELDS
     : REQUIRED_FIELDS.filter((field) => field !== "my_rating");
 
@@ -27,9 +27,7 @@ export function checkItem(item, sourceText, requireRating = true) {
   const sentenceIsInContext =
     item.sentence && item.context && cleanText(item.context).includes(cleanText(item.sentence));
   if (item.sentence && item.context && !sentenceIsInContext) {
-    warnings.push(
-      "sentence not found inside context (copy the exact claim and the whole paragraph)"
-    );
+    warnings.push("sentence not found inside context (copy the exact claim and the whole paragraph)");
   }
 
   const ratedUnavailable = item.my_rating === "source_unavailable";
@@ -58,7 +56,6 @@ export function checkAll(items, readSourceText = readSource, requireRating = tru
 }
 
 function main() {
-
   const requireRating = !process.argv.includes("--unrated");
   const items = loadGold();
   let errorCount = 0;

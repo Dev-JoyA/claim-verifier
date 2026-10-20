@@ -3,15 +3,15 @@
   "version": "0.1.0",
   "description": "Prototype: checks whether a cited source supports a Wikipedia claim, and scores that against human labels.",
   "type": "module",
-  "engines": {
-    "node": ">=18"
-  },
+    "engines": { "node": ">=22.9" },
   "scripts": {
     "test": "node --test",
     "new": "node src/newClaim.js",
+    "import": "node --env-file-if-exists=.env src/importArticle.js",
     "validate": "node src/validate.js",
-    "evaluate": "node src/evaluate.js",
-    "check": "node src/check.js",
+    "prompts": "node src/prompts.js",
+    "check": "node --env-file-if-exists=.env src/check.js",
+    "evaluate": "node --env-file-if-exists=.env src/evaluate.js",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

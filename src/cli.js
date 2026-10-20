@@ -1,4 +1,10 @@
-import { ManualClient, AnthropicClient } from "./clients.js";
+import {
+  ManualClient,
+  AnthropicClient,
+  GeminiClient,
+  OllamaClient,
+  CachedClient,
+} from "./clients.js";
 
 export function getFlag(name, fallback) {
   const position = process.argv.indexOf(`--${name}`);
@@ -6,6 +12,12 @@ export function getFlag(name, fallback) {
 }
 
 export function makeClient() {
-  const useApi = getFlag("client", "manual") === "anthropic";
-  return useApi ? new AnthropicClient(getFlag("model")) : new ManualClient();
+  const choice = getFlag("client", process.env.AI_CLIENT || "manual");
+  if (choice === "manual") return new ManualClient();
+
+  const model = getFlag("model", process.env.AI_MODEL);
+  if (choice === "gemini") return new CachedClient(new GeminiClient(model));
+  if (choice === "ollama") return new CachedClient(new OllamaClient(model));
+  if (choice === "anthropic") return new CachedClient(new AnthropicClient(model));
+  throw new Error(`Unknown client "${choice}". Use manual, ollama, gemini or anthropic.`);
 }
