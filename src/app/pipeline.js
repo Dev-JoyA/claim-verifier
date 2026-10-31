@@ -13,33 +13,68 @@ function record(item, event) {
   item.history.push({ at: new Date().toISOString(), ...event });
 }
 
+const NO_ADDRESS_REASON = "This citation has no web address (a book or an offline source).";
+
+function hostOf(address) {
+  try {
+    return new URL(address).hostname;
+  } catch {
+    return address;
+  }
+}
+
+async function readFromWeb(source, fetchText) {
+  const addresses = [source.url, source.archive_url].filter(
+    (address, position, all) => address && all.indexOf(address) === position
+  );
+
+  const failures = [];
+  for (const address of addresses) {
+    const fetched = await fetchText(address);
+    if (fetched.ok) return { ok: true, text: fetched.text };
+
+    const where = address === source.url ? "" : `archived copy on ${hostOf(address)}: `;
+    failures.push(`${where}${fetched.note}`);
+  }
+  return { ok: false, reason: `Could not read it: ${failures.join("; ")}.` };
+}
+
 async function gatherSources({ store, item, fetchText, sourceTexts, allowMissing }) {
   for (const [index, text] of Object.entries(sourceTexts ?? {})) {
     const source = item.sources.find((candidate) => String(candidate.index) === String(index));
-    if (source && String(text).trim()) store.writeSource(item, source, String(text).trim());
+    if (source && String(text).trim()) {
+      store.writeSource(item, source, String(text).trim());
+      store.writeShared(source.url, String(text).trim());
+    }
   }
 
   const missing = [];
   for (const source of item.sources) {
     if (store.readSource(item, source).trim()) continue;
 
-    const details = { index: source.index, url: source.url, citeText: source.cite_text };
-    if (!source.url) {
-      missing.push({
-        ...details,
-        reason: "This citation has no web address (a book or an offline source).",
-      });
+    const shared = store.readShared(source.url) || store.readShared(source.archive_url);
+    if (shared.trim()) {
+      store.writeSource(item, source, shared);
       continue;
     }
 
+    const details = { index: source.index, url: source.url, citeText: source.cite_text };
+    if (!source.url) {
+      missing.push({ ...details, reason: NO_ADDRESS_REASON });
+      continue;
+    }
     if (allowMissing) {
       missing.push({ ...details, reason: "Not read." });
       continue;
     }
 
-    const fetched = await fetchText(source.url);
-    if (fetched.ok) store.writeSource(item, source, fetched.text);
-    else missing.push({ ...details, reason: `Could not read it: ${fetched.note}.` });
+    const result = await readFromWeb(source, fetchText);
+    if (result.ok) {
+      store.writeSource(item, source, result.text);
+      store.writeShared(source.url, result.text);
+    } else {
+      missing.push({ ...details, reason: result.reason });
+    }
   }
   return missing;
 }

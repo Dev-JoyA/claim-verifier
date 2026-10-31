@@ -34,15 +34,46 @@ export class ManualClient {
   }
 }
 
+const RETRY_WAITS_MS = [3000, 8000, 20000];
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504, 529]);
+const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function readableError(text) {
+  try {
+    return JSON.parse(text).error.message;
+  } catch {
+    return text.slice(0, 200);
+  }
+}
+
+async function fetchWithRetries(fetchImpl, sleep, url, options) {
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetchImpl(url, options);
+    const retry = RETRYABLE_STATUSES.has(response.status) && attempt < RETRY_WAITS_MS.length;
+    if (!retry) return response;
+    await sleep(RETRY_WAITS_MS[attempt]);
+  }
+}
+
+async function failFrom(service, response) {
+  const busy = RETRYABLE_STATUSES.has(response.status)
+    ? " The service is busy. Wait a minute and try again."
+    : "";
+  const body = await response.text();
+  return new Error(`${service} error ${response.status}: ${readableError(body)}${busy}`);
+}
+
 export class AnthropicClient {
-  constructor(model) {
+  constructor(model, { fetchImpl = fetch, sleep = defaultSleep } = {}) {
     this.model = model;
     this.key = process.env.ANTHROPIC_API_KEY;
     if (!this.key) throw new Error("Set ANTHROPIC_API_KEY first.");
+    this.fetchImpl = fetchImpl;
+    this.sleep = sleep;
   }
 
   async complete(prompt) {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetchWithRetries(this.fetchImpl, this.sleep, "https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -55,15 +86,11 @@ export class AnthropicClient {
         messages: [{ role: "user", content: prompt }],
       }),
     });
-    if (!response.ok) throw new Error(`API error ${response.status}: ${await response.text()}`);
+    if (!response.ok) throw await failFrom("Claude API", response);
     const data = await response.json();
     return data.content[0].text;
   }
 }
-
-const MAX_ATTEMPTS = 3;
-const RETRY_WAIT_MS = 20000;
-const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class GeminiClient {
   constructor(model, { fetchImpl = fetch, sleep = defaultSleep } = {}) {
@@ -77,28 +104,18 @@ export class GeminiClient {
 
   async complete(prompt) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`;
+    const response = await fetchWithRetries(this.fetchImpl, this.sleep, url, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": this.key },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    });
+    if (!response.ok) throw await failFrom("Gemini API", response);
 
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      const response = await this.fetchImpl(url, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": this.key },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      });
-
-      if (response.status === 429 && attempt < MAX_ATTEMPTS) {
-        await this.sleep(RETRY_WAIT_MS);
-        continue;
-      }
-      if (!response.ok) {
-        throw new Error(`Gemini API error ${response.status}: ${await response.text()}`);
-      }
-
-      const data = await response.json();
-      const parts = data.candidates?.[0]?.content?.parts ?? [];
-      const text = parts.map((part) => part.text ?? "").join("");
-      if (!text) throw new Error(`Gemini returned no text: ${JSON.stringify(data).slice(0, 300)}`);
-      return text;
-    }
+    const data = await response.json();
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const text = parts.map((part) => part.text ?? "").join("");
+    if (!text) throw new Error(`Gemini returned no text: ${JSON.stringify(data).slice(0, 300)}`);
+    return text;
   }
 }
 

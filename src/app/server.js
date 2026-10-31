@@ -27,6 +27,7 @@ export function claimsFrom(html) {
       return {
         index: index + 1,
         refId,
+        label: claim.labels[index] ?? "",
         url: reference.url,
         archiveUrl: reference.archiveUrl,
         citeText: reference.citeText,

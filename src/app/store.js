@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { loadGold } from "../gold.js";
 import { nextId } from "../newClaim.js";
@@ -204,6 +205,23 @@ export function createStore({ goldDir, sourcesDir }) {
     return item;
   }
 
+  function sharedPath(url) {
+    const name = createHash("sha1").update(url).digest("hex");
+    return path.join(sourcesDir, "_shared", `${name}.txt`);
+  }
+
+  function readShared(url) {
+    if (!url) return "";
+    const file = sharedPath(url);
+    return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+  }
+
+  function writeShared(url, text) {
+    if (!url || !text.trim()) return;
+    fs.mkdirSync(path.join(sourcesDir, "_shared"), { recursive: true });
+    fs.writeFileSync(sharedPath(url), text, "utf8");
+  }
+
   function readSource(item, source) {
     const file = sourcePath(source);
     return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
@@ -237,6 +255,8 @@ export function createStore({ goldDir, sourcesDir }) {
     save,
     readSource,
     writeSource,
+    readShared,
+    writeShared,
     combinedText,
     writeCombined,
   };

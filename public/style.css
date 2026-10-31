@@ -122,6 +122,7 @@ main {
 }
 
 .row {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 0.7rem;
@@ -208,6 +209,7 @@ button:focus-visible {
 }
 
 .actions {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -557,4 +559,73 @@ dialog label {
 
 dialog .field {
   margin-top: 0.9rem;
+}
+
+.button.is-busy {
+  background: #8d94c4;
+  border-color: #8d94c4;
+  cursor: progress;
+}
+
+body.busy .verify-btn:not(.is-busy),
+body.busy #verify-range,
+body.busy #verify-random,
+body.busy #verify-all {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.bubble {
+  position: absolute;
+  bottom: 100%;
+  margin-bottom: 8px;
+  z-index: 10;
+  padding: 0.4rem 0.7rem;
+  border-radius: 4px;
+  background: #1f2933;
+  color: #fff;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 1rem;
+  border: 6px solid transparent;
+  border-top-color: #1f2933;
+}
+
+.result {
+  margin: 0.6rem 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.result > summary {
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.result > .verdicts,
+.result > .note,
+.result > .actions {
+  margin-left: 0.8rem;
+  margin-right: 0.8rem;
+}
+
+.result > .actions {
+  margin-bottom: 0.8rem;
+}
+
+.alert p {
+  margin: 0;
+}
+
+.alert .actions {
+  margin-top: 0.5rem;
 }

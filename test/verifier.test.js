@@ -18,7 +18,7 @@ import { checkItem } from "../src/validate.js";
 import { loadGold } from "../src/gold.js";
 import { run, agree } from "../src/evaluate.js";
 import { checkClaims } from "../src/check.js";
-import { GeminiClient, OllamaClient, CachedClient } from "../src/clients.js";
+import { GeminiClient, AnthropicClient, OllamaClient, CachedClient } from "../src/clients.js";
 import { writePrompts } from "../src/prompts.js";
 import { makeClient } from "../src/cli.js";
 
@@ -331,4 +331,73 @@ test("a prompt for several sources explains how to judge them together", () => {
   assert.ok(prompt.includes("cites several sources"));
   const single = buildPrompt({ id: "x", sentence: "s", context: "c", article_title: "t" }, "[Source 1] a\nOne.", "full");
   assert.ok(single.includes("Source text:"));
+});
+
+const answer = (status, body) => ({
+  status,
+  ok: status >= 200 && status < 300,
+  text: async () => (typeof body === "string" ? body : JSON.stringify(body)),
+  json: async () => body,
+});
+
+test("GeminiClient waits and retries when the service is busy (503)", async () => {
+  process.env.GEMINI_API_KEY = "test-key";
+  const busy = { error: { code: 503, message: "This model is currently experiencing high demand.", status: "UNAVAILABLE" } };
+  const replies = [
+    answer(503, busy),
+    answer(503, busy),
+    answer(200, { candidates: [{ content: { parts: [{ text: "finally" }] } }] }),
+  ];
+  const waits = [];
+  const client = new GeminiClient("m", {
+    fetchImpl: async () => replies.shift(),
+    sleep: async (ms) => waits.push(ms),
+  });
+  assert.equal(await client.complete("p"), "finally");
+  assert.deepEqual(waits, [3000, 8000]);
+});
+
+test("GeminiClient gives a short, friendly error when it stays busy", async () => {
+  process.env.GEMINI_API_KEY = "test-key";
+  const busy = { error: { code: 503, message: "This model is currently experiencing high demand.", status: "UNAVAILABLE" } };
+  let calls = 0;
+  const client = new GeminiClient("m", {
+    fetchImpl: async () => {
+      calls++;
+      return answer(503, busy);
+    },
+    sleep: async () => {},
+  });
+  await assert.rejects(
+    () => client.complete("p"),
+    (error) =>
+      error.message.includes("This model is currently experiencing high demand.") &&
+      error.message.includes("busy") &&
+      !error.message.includes("{")
+  );
+  assert.equal(calls, 4);
+});
+
+test("a normal Gemini error is not retried", async () => {
+  process.env.GEMINI_API_KEY = "test-key";
+  let calls = 0;
+  const client = new GeminiClient("m", {
+    fetchImpl: async () => {
+      calls++;
+      return answer(400, { error: { message: "API key not valid." } });
+    },
+    sleep: async () => {},
+  });
+  await assert.rejects(() => client.complete("p"), /API key not valid/);
+  assert.equal(calls, 1);
+});
+
+test("AnthropicClient retries when the service is overloaded (529)", async () => {
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const replies = [answer(529, { error: { message: "Overloaded" } }), answer(200, { content: [{ text: "ok" }] })];
+  const client = new AnthropicClient("m", {
+    fetchImpl: async () => replies.shift(),
+    sleep: async () => {},
+  });
+  assert.equal(await client.complete("p"), "ok");
 });

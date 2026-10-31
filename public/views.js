@@ -119,11 +119,12 @@ export function sourceList(claim, article) {
       el(
         "li",
         {},
-        `Source ${source.index}: `,
+        `Source ${source.index}`,
+        source.label ? ` \u00b7 footnote ${source.label}: ` : ": ",
         source.url ? externalLink(source.url, hostOf(source.url)) : "no web address",
         source.archiveUrl ? [" \u00b7 ", externalLink(source.archiveUrl, "archived copy")] : null,
         " \u00b7 ",
-        externalLink(referenceLink(article.title, article.revid, source.refId), "footnote in article"),
+        externalLink(referenceLink(article.title, article.revid, source.refId), "view footnote in article"),
         el("span", { class: "note" }, source.hasText ? " \u00b7 text saved" : " \u00b7 not read yet")
       )
     )

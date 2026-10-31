@@ -7,7 +7,6 @@ import {
   disagreements,
   groupClaims,
   isVerified,
-  nice,
   ratedBy,
   toCsv,
   toWikitext,
@@ -23,18 +22,25 @@ import {
 } from "./views.js";
 import { askForAiReply, askForSources, decideDialog, detailsDialog, rateDialog } from "./dialogs.js";
 
+const ERROR_SHOWN_MS = 45000;
+const BUBBLE_SHOWN_MS = 3000;
+
 const state = {
   config: null,
   article: null,
   tab: "claims",
   filter: "all",
-  checked: new Set(),
-  reviewNumbers: [],
-  busy: false,
+  running: new Map(),
+  problems: new Map(),
+  expanded: new Set(),
+  ticker: null,
 };
 
 const claimAt = (number) => state.article.claims[number - 1];
-const byNumber = (a, b) => a - b;
+const pendingNumbers = () =>
+  state.article.claims.filter((claim) => claim.view.ai?.review === "pending").map((claim) => claim.number);
+const unverifiedNumbers = () =>
+  state.article.claims.filter((claim) => claim.view.status === "unverified").map((claim) => claim.number);
 
 function setMessage(text, isError = false) {
   const box = $("#message");
@@ -42,8 +48,22 @@ function setMessage(text, isError = false) {
   box.className = isError ? "message error" : "message";
 }
 
-function addProblem(number, text) {
-  $("#problems").append(el("div", { class: "alert alert-error" }, `Claim #${number}: ${text}`));
+function showBubble(anchor, text) {
+  document.querySelectorAll(".bubble").forEach((bubble) => bubble.remove());
+  const bubble = el("div", { class: "bubble", role: "status" }, text);
+  bubble.style.left = `${anchor.offsetLeft}px`;
+  anchor.parentElement.append(bubble);
+  setTimeout(() => bubble.remove(), BUBBLE_SHOWN_MS);
+}
+
+function setProblem(number, message) {
+  state.problems.set(number, message);
+  setTimeout(() => {
+    if (state.problems.get(number) === message) {
+      state.problems.delete(number);
+      renderCard(number);
+    }
+  }, ERROR_SHOWN_MS);
 }
 
 function renderHeader() {
@@ -76,12 +96,100 @@ function renderStats() {
   );
 }
 
+function renderToolbar() {
+  const pending = pendingNumbers().length;
+  const button = $("#accept-all");
+  button.hidden = pending === 0;
+  button.textContent = `Accept all ${pending} AI suggestion${pending === 1 ? "" : "s"}`;
+}
+
 function passesFilter(claim) {
   const status = claim.view.status;
   if (state.filter === "unverified") return status === "unverified";
   if (state.filter === "review") return status === "ai_pending";
   if (state.filter === "verified") return isVerified(claim.view);
   return true;
+}
+
+function verifyButton(claim) {
+  const run = state.running.get(claim.number);
+  const label = run ? (run.status === "active" ? "Verifying\u2026" : "Queued") : "Verify";
+  return el(
+    "button",
+    {
+      class: `button verify-btn${run ? " is-busy" : ""}`,
+      "data-state": run?.status ?? "idle",
+      "aria-disabled": run ? "true" : null,
+      onclick: (event) => startVerify([claim.number], event.currentTarget),
+    },
+    label
+  );
+}
+
+function problemAlert(claim) {
+  const message = state.problems.get(claim.number);
+  if (!message) return null;
+  return el(
+    "div",
+    { class: "alert alert-error", role: "alert" },
+    el("p", {}, message),
+    el(
+      "div",
+      { class: "actions" },
+      el(
+        "button",
+        { class: "button secondary try-again", onclick: (event) => startVerify([claim.number], event.currentTarget) },
+        "Try again"
+      ),
+      el(
+        "button",
+        {
+          class: "button secondary dismiss",
+          onclick: () => {
+            state.problems.delete(claim.number);
+            renderCard(claim.number);
+          },
+        },
+        "Dismiss"
+      )
+    )
+  );
+}
+
+function resultSection(claim) {
+  const view = claim.view;
+  if (!view.ai && !view.human) return null;
+
+  const summary =
+    view.status === "ai_pending"
+      ? "AI suggestion: review the rating, evidence and reasoning"
+      : "Rating, evidence and reasoning";
+
+  return el(
+    "details",
+    {
+      class: "result",
+      open: state.expanded.has(claim.number),
+      ontoggle: (event) => {
+        if (event.target.open) state.expanded.add(claim.number);
+        else state.expanded.delete(claim.number);
+      },
+    },
+    el("summary", {}, summary),
+    verdictsFor(view),
+    view.decision ? el("p", { class: "note" }, decisionText(view.decision)) : null,
+    el(
+      "div",
+      { class: "actions" },
+      view.ai && view.ai.review === "pending"
+        ? el("button", { class: "button accept-btn", onclick: () => refreshAfter(() => accept(claim), claim.number) }, "Accept AI rating")
+        : null,
+      view.needsDecision
+        ? el("button", { class: "button decide-btn", onclick: () => refreshAfter(() => decide(claim), claim.number) }, "Decide between them")
+        : null,
+      el("button", { class: "button secondary rate-btn", onclick: () => refreshAfter(() => rerate(claim), claim.number) }, "Rate it myself")
+    )
+  );
 }
 
 function claimCard(claim) {
@@ -92,29 +200,19 @@ function claimCard(claim) {
     el(
       "div",
       { class: "claim-head" },
-      el(
-        "label",
-        { class: "check" },
-        el("input", {
-          type: "checkbox",
-          checked: state.checked.has(claim.number),
-          onchange: (event) => {
-            if (event.target.checked) state.checked.add(claim.number);
-            else state.checked.delete(claim.number);
-          },
-        }),
-        `Claim #${claim.number}`
-      ),
+      el("strong", {}, `Claim #${claim.number}`),
       el("div", { class: "tags" }, isVerified(view) ? ratingBadge(view.rating) : null, statusTag(view))
     ),
     el("p", { class: "sentence" }, claim.sentence),
     provenanceLine(view),
     differenceChip(view),
     sourceList(claim, state.article),
+    problemAlert(claim),
+    resultSection(claim),
     el(
       "div",
       { class: "actions" },
-      el("button", { class: "button", onclick: () => verifyMany([claim.number]) }, "Verify"),
+      verifyButton(claim),
       el("button", { class: "button secondary", onclick: () => openDetails(claim.number) }, "Details")
     )
   );
@@ -128,77 +226,12 @@ function renderClaims() {
   for (const claim of shown) list.append(claimCard(claim));
 }
 
-function reviewCard(claim) {
-  const view = claim.view;
-  return el(
-    "article",
-    { class: "module claim" },
-    el(
-      "div",
-      { class: "claim-head" },
-      el("strong", {}, `Claim #${claim.number}`),
-      el("div", { class: "tags" }, isVerified(view) ? ratingBadge(view.rating) : null, statusTag(view))
-    ),
-    el("p", { class: "sentence" }, claim.sentence),
-    verdictsFor(view),
-    el(
-      "div",
-      { class: "actions" },
-      view.ai && view.ai.review === "pending"
-        ? el("button", { class: "button", onclick: () => refreshAfter(() => accept(claim)) }, "Accept AI rating")
-        : null,
-      view.needsDecision
-        ? el("button", { class: "button", onclick: () => refreshAfter(() => decide(claim)) }, "Decide between them")
-        : null,
-      el("button", { class: "button secondary", onclick: () => refreshAfter(() => verifyOne(claim.number)) }, "Verify again"),
-      el("button", { class: "button secondary", onclick: () => refreshAfter(() => rerate(claim)) }, "Rate it myself"),
-      el("button", { class: "button secondary", onclick: () => openDetails(claim.number) }, "Details")
-    )
-  );
-}
-
-function renderReview() {
-  const panel = $("#review");
-  const numbers = state.reviewNumbers;
-  panel.hidden = numbers.length === 0;
-  if (numbers.length === 0) return panel.replaceChildren();
-
-  const pending = numbers.filter((number) => claimAt(number).view.ai?.review === "pending");
-  panel.replaceChildren(
-    el("div", { class: "section-header" }, el("h3", {}, "Results")),
-    el(
-      "div",
-      { class: "module-body" },
-      el(
-        "p",
-        { class: "note" },
-        "Check each rating, its evidence and its reasoning. Accept the AI's rating, verify again, or rate it yourself."
-      ),
-      el(
-        "div",
-        { class: "actions" },
-        pending.length
-          ? el(
-              "button",
-              { id: "accept-all", class: "button", onclick: () => refreshAfter(() => acceptMany(pending)) },
-              `Accept all ${pending.length} AI rating(s)`
-            )
-          : null,
-        el(
-          "button",
-          {
-            class: "button secondary",
-            onclick: () => {
-              state.reviewNumbers = [];
-              renderReview();
-            },
-          },
-          "Close results"
-        )
-      ),
-      ...numbers.map((number) => reviewCard(claimAt(number)))
-    )
-  );
+function renderCard(number) {
+  const claim = claimAt(number);
+  const existing = document.getElementById(`claim-${number}`);
+  if (!passesFilter(claim)) return existing?.remove();
+  if (!existing) return renderClaims();
+  existing.replaceWith(claimCard(claim));
 }
 
 function summaryClaim(claim) {
@@ -242,11 +275,7 @@ function renderSummary() {
         el("br"),
         `${group.claims.length} claim${group.claims.length === 1 ? "" : "s"}`
       ),
-      el(
-        "td",
-        {},
-        group.claims.length ? group.claims.map(summaryClaim) : el("span", { class: "note" }, "None")
-      )
+      el("td", {}, group.claims.length ? group.claims.map(summaryClaim) : el("span", { class: "note" }, "None"))
     )
   );
   const output = el("textarea", { id: "wikitext-output", rows: 10, readonly: true, hidden: true });
@@ -317,7 +346,7 @@ function compareRow(claim) {
       "td",
       {},
       view.needsDecision
-        ? el("button", { class: "button decide-button", onclick: () => refreshAfter(() => decide(claim)) }, "Decide")
+        ? el("button", { class: "button decide-button", onclick: () => refreshAfter(() => decide(claim), claim.number) }, "Decide")
         : null
     )
   );
@@ -369,11 +398,7 @@ function renderCompare() {
                 el(
                   "thead",
                   {},
-                  el(
-                    "tr",
-                    {},
-                    ["Claim", "Human", "AI", "Difference", "Decision", ""].map((heading) => el("th", {}, heading))
-                  )
+                  el("tr", {}, ["Claim", "Human", "AI", "Difference", "Decision", ""].map((heading) => el("th", {}, heading)))
                 ),
                 el("tbody", {}, rows)
               )
@@ -388,8 +413,8 @@ function renderAll() {
   if (!state.article) return;
   renderHeader();
   renderStats();
+  renderToolbar();
   renderClaims();
-  renderReview();
   renderSummary();
   renderCompare();
 }
@@ -405,13 +430,19 @@ function showTab(name) {
   renderAll();
 }
 
-async function refreshAfter(task) {
+async function refreshAfter(task, number) {
   try {
     await task();
   } catch (error) {
-    setMessage(error.message, true);
+    if (number) setProblem(number, error.message);
+    else setMessage(error.message, true);
   }
-  renderAll();
+  if (number) renderCard(number);
+  else renderClaims();
+  renderStats();
+  renderToolbar();
+  renderSummary();
+  renderCompare();
 }
 
 const base = (claim) => ({ revid: state.article.revid, number: claim.number });
@@ -467,31 +498,32 @@ async function openDetails(number) {
       if (action === "decide") await decide(claim);
       if (action === "reverify") await verifyOne(number);
       if (action === "rerate") await rerate(claim);
-    });
+    }, number);
   }
   renderAll();
 }
 
 async function verifyOne(number, extra = {}) {
   const claim = claimAt(number);
-  const first = Object.keys(extra).length === 0;
   let data;
   try {
     data = await request("/api/verify", { ...base(claim), ...extra });
   } catch (error) {
-    addProblem(number, error.message);
+    setProblem(number, error.message);
     return false;
   }
   if (data.sources) claim.sources = data.sources;
 
   if (data.outcome === "verified") {
     claim.view = data.view;
+    state.problems.delete(number);
     return true;
   }
 
   if (data.outcome === "needs_source") {
     const answer = await askForSources(claim, data);
     if (!answer) return false;
+    if (answer.action === "retry") return verifyOne(number);
     if (answer.action === "unavailable") {
       await saveRating(claim, { rating: "source_unavailable", reasoning: "", evidence: [] });
       return true;
@@ -502,61 +534,106 @@ async function verifyOne(number, extra = {}) {
   if (data.outcome === "needs_ai_reply") {
     const answer = await askForAiReply(claim, data.prompt);
     if (!answer) return false;
-    return verifyOne(number, { allowMissing: first ? false : extra.allowMissing, aiReply: answer.reply });
+    return verifyOne(number, { allowMissing: extra.allowMissing ?? false, aiReply: answer.reply });
   }
 
-  addProblem(number, data.error || "Something went wrong.");
+  setProblem(number, data.error || "Something went wrong.");
   return false;
 }
 
-async function verifyMany(numbers) {
-  if (state.busy) return setMessage("Already verifying. Please wait.", true);
-  if (numbers.length === 0) return setMessage("There are no claims to verify.", true);
-  if (numbers.length > 10 && !confirm(`This will ask the AI about ${numbers.length} claims. Continue?`)) return;
-
-  state.busy = true;
-  setMessage("");
+function tick() {
   const progress = $("#progress");
-  progress.hidden = false;
-  const finished = [];
-
-  try {
-    for (const [index, number] of numbers.entries()) {
-      const started = Date.now();
-      const label = () =>
-        `Verifying ${index + 1} of ${numbers.length} (claim #${number}) \u00b7 ` +
-        `${Math.round((Date.now() - started) / 1000)} s`;
-      progress.textContent = label();
-      const timer = setInterval(() => {
-        progress.textContent = label();
-      }, 1000);
-      try {
-        if (await verifyOne(number)) finished.push(number);
-      } finally {
-        clearInterval(timer);
-      }
-    }
-    progress.textContent = `Done. ${finished.length} of ${numbers.length} claims have a result.`;
-  } finally {
-    state.busy = false;
+  for (const [number, run] of state.running) {
+    if (run.status !== "active") continue;
+    const seconds = Math.round((Date.now() - run.started) / 1000);
+    const button = document.querySelector(`#claim-${number} .verify-btn`);
+    if (button) button.textContent = `Verifying\u2026 ${seconds} s`;
+    progress.textContent = `${progress.dataset.prefix} \u00b7 ${seconds} s`;
   }
-
-  state.reviewNumbers = finished;
-  renderAll();
 }
 
-const unverifiedNumbers = () =>
-  state.article.claims.filter((claim) => claim.view.status === "unverified").map((claim) => claim.number);
+function scrollToCard(number) {
+  document.getElementById(`claim-${number}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
 
-async function runSelection(getNumbers) {
-  if (!state.article) return;
+async function verifyMany(numbers) {
+  if (numbers.length > 10 && !confirm(`This will ask the AI about ${numbers.length} claims. Continue?`)) return;
+
+  const progress = $("#progress");
+  progress.hidden = false;
+  for (const number of numbers) state.running.set(number, { status: "queued", started: Date.now() });
+  document.body.classList.add("busy");
+  state.ticker = setInterval(tick, 1000);
+
+  let finished = 0;
+  try {
+    for (const [index, number] of numbers.entries()) {
+      state.running.set(number, { status: "active", started: Date.now() });
+      state.problems.delete(number);
+      progress.dataset.prefix = `Verifying ${index + 1} of ${numbers.length} (claim #${number})`;
+      progress.textContent = progress.dataset.prefix;
+      numbers.forEach(renderCard);
+
+      const done = await verifyOne(number);
+      state.running.delete(number);
+      if (done) {
+        finished++;
+        state.expanded.add(number);
+      }
+      renderCard(number);
+      renderStats();
+      renderToolbar();
+      if (numbers.length === 1) scrollToCard(number);
+    }
+    progress.textContent = `Done. ${finished} of ${numbers.length} claims have a result.`;
+  } finally {
+    clearInterval(state.ticker);
+    state.running.clear();
+    document.body.classList.remove("busy");
+    renderAll();
+  }
+}
+
+function startVerify(numbers, button) {
+  if (state.running.size > 0) return showBubble(button, "Already verifying. Please wait.");
+  return verifyMany(numbers);
+}
+
+function rangeProblem(message) {
+  $("#range-hint").textContent = message;
+  $("#range").classList.add("invalid");
+}
+
+function clearHints() {
+  $("#range-hint").textContent = "";
+  $("#toolbar-hint").textContent = "";
+  $("#range").classList.remove("invalid");
+}
+
+function verifyRange(event) {
+  clearHints();
   let numbers;
   try {
-    numbers = getNumbers();
+    numbers = parseSelection($("#range").value, state.article.claims.length);
   } catch (error) {
-    return setMessage(error.message, true);
+    return rangeProblem(error.message);
   }
-  await verifyMany(numbers);
+  if (numbers.length === 0) return rangeProblem("Type claim numbers first, for example 1-5, 8.");
+  startVerify(numbers, event.currentTarget);
+}
+
+function verifyRandom(event) {
+  clearHints();
+  const pool = unverifiedNumbers();
+  if (pool.length === 0) return void ($("#toolbar-hint").textContent = "Every claim already has a result.");
+  startVerify(pickRandom(pool, Number($("#random-count").value) || 1), event.currentTarget);
+}
+
+function verifyAll(event) {
+  clearHints();
+  const pool = unverifiedNumbers();
+  if (pool.length === 0) return void ($("#toolbar-hint").textContent = "Every claim already has a result.");
+  startVerify(pool, event.currentTarget);
 }
 
 async function loadArticle() {
@@ -572,11 +649,12 @@ async function loadArticle() {
     return setMessage(error.message, true);
   }
 
-  state.checked.clear();
-  state.reviewNumbers = [];
+  state.running.clear();
+  state.problems.clear();
+  state.expanded = new Set(pendingNumbers());
+  clearHints();
   $("#workspace").hidden = false;
   $("#progress").hidden = true;
-  $("#problems").replaceChildren();
 
   if (state.article.searchedFor) {
     setMessage(
@@ -617,16 +695,11 @@ async function start() {
   for (const button of document.querySelectorAll(".tab")) {
     button.onclick = () => showTab(button.dataset.tab);
   }
-  $("#verify-range").onclick = () =>
-    runSelection(() => parseSelection($("#range").value, state.article.claims.length));
-  $("#verify-checked").onclick = () => runSelection(() => [...state.checked].sort(byNumber));
-  $("#verify-random").onclick = () =>
-    runSelection(() => pickRandom(unverifiedNumbers(), Number($("#random-count").value) || 1));
-  $("#verify-all").onclick = () => runSelection(unverifiedNumbers);
-  $("#clear-checked").onclick = () => {
-    state.checked.clear();
-    renderClaims();
-  };
+  $("#range").addEventListener("input", clearHints);
+  $("#verify-range").onclick = verifyRange;
+  $("#verify-random").onclick = verifyRandom;
+  $("#verify-all").onclick = verifyAll;
+  $("#accept-all").onclick = () => refreshAfter(() => acceptMany(pendingNumbers()));
   $("#filter").onchange = (event) => {
     state.filter = event.target.value;
     renderClaims();

@@ -7,7 +7,7 @@ import http from "node:http";
 import { createApp } from "../src/app/server.js";
 import { importClaims } from "../src/importArticle.js";
 import { loadGold } from "../src/gold.js";
-import { PAGE } from "./fixtures.js";
+import { PAGE, DIANA } from "./fixtures.js";
 
 const GOOD_REPLY = JSON.stringify({
   intended_meaning: "The bridge opened in 1932.",
@@ -27,7 +27,7 @@ const GOOD_REPLY = JSON.stringify({
 
 const SOURCE_TEXT = "Archive notes: the bridge was opened to traffic in 1932. ".repeat(10);
 
-async function start({ ai, fetchText, seed } = {}) {
+async function start({ ai, fetchText, seed, html } = {}) {
   const goldDir = fs.mkdtempSync(path.join(os.tmpdir(), "app-gold-"));
   const sourcesDir = fs.mkdtempSync(path.join(os.tmpdir(), "app-sources-"));
   fs.copyFileSync("gold/TEMPLATE.json", path.join(goldDir, "TEMPLATE.json"));
@@ -44,7 +44,7 @@ async function start({ ai, fetchText, seed } = {}) {
           code: "missingtitle",
         });
       }
-      return { title: "Example Bridge", revid: 42, html: PAGE };
+      return { title: "Example Bridge", revid: 42, html: html ?? PAGE };
     },
     searchTitles: async (query) => (query.toLowerCase().includes("bridge") ? ["Example Bridge"] : []),
     suggestTitles: async (query) => [`${query} one`, `${query} two`],
@@ -447,4 +447,82 @@ test("a verified claim records how long the source and the AI took", async (t) =
   const { data } = await app.post("/api/verify", { revid: 42, number: 1 });
   assert.equal(typeof data.view.ai.tookMs.source, "number");
   assert.equal(typeof data.view.ai.tookMs.ai, "number");
+});
+
+const diana = (overrides = {}) => {
+  const seen = [];
+  const texts = {
+    "https://sfgate.example/profile": { ok: false, text: "", note: "HTTP 403" },
+    "https://web.archive.org/web/2010/https://sfgate.example/profile": {
+      ok: true,
+      text: "Archived profile: she really has no prejudgments and the bridge was opened to traffic in 1932. ".repeat(6),
+      note: "",
+    },
+    "https://curve.example/humorless": { ok: true, text: SOURCE_TEXT, note: "" },
+    ...overrides,
+  };
+  const fetchText = async (url) => {
+    seen.push(url);
+    return texts[url] ?? { ok: false, text: "", note: "HTTP 404" };
+  };
+  return { fetchText, seen };
+};
+
+test("the archived copy is used when the original page cannot be read", async (t) => {
+  const { fetchText, seen } = diana();
+  const app = await start({ html: DIANA, fetchText });
+  t.after(app.close);
+  await app.get(LOAD);
+
+  const { data } = await app.post("/api/verify", { revid: 42, number: 3 });
+  assert.equal(data.outcome, "verified");
+  assert.deepEqual(seen, [
+    "https://sfgate.example/profile",
+    "https://web.archive.org/web/2010/https://sfgate.example/profile",
+  ]);
+});
+
+test("a source read for one claim is reused for another claim that cites it", async (t) => {
+  const { fetchText, seen } = diana();
+  const app = await start({ html: DIANA, fetchText });
+  t.after(app.close);
+  const article = await app.get(LOAD);
+  assert.equal(article.claims[2].sources[0].refId, article.claims[6].sources[1].refId);
+  assert.deepEqual(article.claims[6].sources.map((source) => source.label), ["[9]", "[3]"]);
+
+  await app.post("/api/verify", { revid: 42, number: 3 });
+  const readBefore = seen.length;
+
+  const second = await app.post("/api/verify", { revid: 42, number: 7 });
+  assert.equal(second.data.outcome, "verified");
+  const newFetches = seen.slice(readBefore);
+  assert.deepEqual(newFetches, ["https://curve.example/humorless"]);
+  assert.ok(app.calls.prompts.at(-1).includes("Archived profile"));
+});
+
+test("text pasted for a source is reused by later claims that cite the same source", async (t) => {
+  const { fetchText, seen } = diana({
+    "https://web.archive.org/web/2010/https://sfgate.example/profile": { ok: false, text: "", note: "HTTP 404" },
+  });
+  const app = await start({ html: DIANA, fetchText });
+  t.after(app.close);
+  await app.get(LOAD);
+
+  const blocked = await app.post("/api/verify", { revid: 42, number: 3 });
+  assert.equal(blocked.data.outcome, "needs_source");
+  assert.match(blocked.data.missing[0].reason, /archived copy on web\.archive\.org: HTTP 404/);
+
+  const pasted = await app.post("/api/verify", {
+    revid: 42,
+    number: 3,
+    sourceTexts: { 1: "Pasted profile: the bridge was opened to traffic in 1932." },
+    allowMissing: true,
+  });
+  assert.equal(pasted.data.outcome, "verified");
+
+  const readBefore = seen.length;
+  const later = await app.post("/api/verify", { revid: 42, number: 7 });
+  assert.equal(later.data.outcome, "verified");
+  assert.ok(!seen.slice(readBefore).some((url) => url.includes("sfgate")));
+  assert.ok(app.calls.prompts.at(-1).includes("Pasted profile"));
 });

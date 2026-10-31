@@ -1,11 +1,13 @@
 import { decodeEntities, stripTags } from "./htmlText.js";
 
 const CITE_OPEN = "\u0001";
+const CITE_LABEL = "\u0003";
 const CITE_CLOSE = "\u0002";
-const MARKER = /\u0001([^\u0002]*)\u0002/g;
+const MARKER = /\u0001([^\u0002\u0003]*)\u0003?([^\u0002]*)\u0002/g;
 const SUP_REFERENCE = /<sup\b[^>]*\bclass="[^"]*\breference\b[^"]*"[^>]*>[\s\S]*?<\/sup>/gi;
 const PARAGRAPH = /<p\b[^>]*>([\s\S]*?)<\/p>/gi;
-const BOUNDARY = /([.!?]["'\u201d\u2019)\]]*(?:\u0001[^\u0002]*\u0002)*)\s+(?=["\u201c\u2018(]?[A-Z0-9])/g;
+const BOUNDARY =
+  /(?:([.!?]["'\u201d\u2019)\]]*(?:\u0001[^\u0002]*\u0002)*)|((?:\u0001[^\u0002]*\u0002)+))\s+(?=["\u201c\u2018(]?[A-Z0-9])/g;
 const ABBREVIATION = /(?:\b[A-Z]|\b(?:Mr|Mrs|Ms|Dr|Prof|St|Mt|Jr|Sr|vs|No|Inc|Ltd|Co|Gen|Col|Sen|Rep|Gov|Lt|Capt|Rev|Hon))\.$/;
 const REFERENCE_ITEM = /<li\b[^>]*\bid="cite_note-([^"]+)"[^>]*>([\s\S]*?)<\/li>/gi;
 const LINK = /href="((?:https?:)?\/\/[^"]+)"/gi;
@@ -19,8 +21,16 @@ const tidy = (text) => text.replace(/\s+/g, " ").replace(/\s+([.,;:!?])/g, "$1")
 function markCitations(html) {
   return html.replace(SUP_REFERENCE, (sup) => {
     const id = /cite_note-([^"'\s>]+)/.exec(sup)?.[1];
-    return id ? `${CITE_OPEN}${id}${CITE_CLOSE}` : "";
+    const label = stripTags(sup).replace(/\s+/g, "");
+    return id ? `${CITE_OPEN}${id}${CITE_LABEL}${label}${CITE_CLOSE}` : "";
   });
+}
+
+function hasOpenQuote(text) {
+  const straight = (text.match(/"/g) ?? []).length;
+  const opening = (text.match(/\u201c/g) ?? []).length;
+  const closing = (text.match(/\u201d/g) ?? []).length;
+  return straight % 2 === 1 || opening > closing;
 }
 
 export function splitSentences(text) {
@@ -28,9 +38,13 @@ export function splitSentences(text) {
   let start = 0;
 
   for (const match of text.matchAll(BOUNDARY)) {
-    const end = match.index + match[1].length;
+    const markersOnly = match[2] !== undefined;
+    const end = match.index + (match[1] ?? match[2]).length;
     const candidate = text.slice(start, end);
-    if (ABBREVIATION.test(withoutMarkers(candidate))) continue;
+    const plain = withoutMarkers(candidate);
+
+    if (ABBREVIATION.test(plain) || hasOpenQuote(plain)) continue;
+    if (markersOnly && /(^|[,;:(\u2013\u2014-])\s*$/.test(plain)) continue;
     sentences.push(candidate.trim());
     start = match.index + match[0].length;
   }
@@ -48,10 +62,13 @@ export function extractClaims(html) {
     const context = tidy(withoutMarkers(marked));
 
     for (const sentence of splitSentences(marked.replace(/\s+/g, " ").trim())) {
-      const refIds = [...sentence.matchAll(MARKER)].map((match) => match[1]);
+      const found = new Map();
+      for (const match of sentence.matchAll(MARKER)) {
+        if (!found.has(match[1])) found.set(match[1], match[2]);
+      }
       const clean = tidy(withoutMarkers(sentence));
-      if (refIds.length > 0 && clean.length >= MIN_CLAIM_LENGTH) {
-        claims.push({ sentence: clean, context, refIds });
+      if (found.size > 0 && clean.length >= MIN_CLAIM_LENGTH) {
+        claims.push({ sentence: clean, context, refIds: [...found.keys()], labels: [...found.values()] });
       }
     }
   }

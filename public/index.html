@@ -59,8 +59,8 @@
                   <input id="range" type="text" placeholder="1-5, 8, 12-14" />
                 </label>
                 <button id="verify-range" class="button">Verify these</button>
-                <button id="verify-checked" class="button">Verify checked</button>
               </div>
+              <p id="range-hint" class="alert-text" role="alert"></p>
               <div class="row">
                 <label class="field">How many random claims
                   <input id="random-count" type="number" min="1" value="4" />
@@ -68,6 +68,7 @@
                 <button id="verify-random" class="button secondary">Verify random unverified</button>
                 <button id="verify-all" class="button secondary">Verify all unverified</button>
               </div>
+              <p id="toolbar-hint" class="alert-text" role="alert"></p>
               <div class="row">
                 <label class="field">Show
                   <select id="filter">
@@ -77,14 +78,12 @@
                     <option value="verified">Verified</option>
                   </select>
                 </label>
-                <button id="clear-checked" class="button secondary">Clear checkmarks</button>
+                <button id="accept-all" class="button" hidden></button>
                 <span id="count" class="note"></span>
               </div>
               <p id="progress" class="progress" role="status" hidden></p>
             </div>
           </div>
-          <div id="problems"></div>
-          <section id="review" class="module" hidden></section>
           <section id="claims"></section>
         </section>
 

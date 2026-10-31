@@ -5,6 +5,11 @@ import { decisionText, highlighted, sourceList, statusTag, verdictsFor } from ".
 const cancelButton = (close) =>
   el("button", { class: "button secondary", onclick: () => close(null) }, "Cancel");
 
+function sourceHeading(claim, entry) {
+  const label = claim.sources.find((source) => source.index === entry.index)?.label;
+  return label ? `Source ${entry.index} (footnote ${label})` : `Source ${entry.index}`;
+}
+
 export function askForSources(claim, data) {
   return showDialog((close) => {
     const boxes = new Map();
@@ -14,7 +19,7 @@ export function askForSources(claim, data) {
       return el(
         "div",
         { class: "field" },
-        el("h4", {}, `Source ${entry.index}`),
+        el("h4", {}, sourceHeading(claim, entry)),
         entry.url ? el("p", {}, externalLink(entry.url, entry.url)) : el("p", { class: "note" }, "No web address."),
         entry.citeText ? el("p", { class: "note" }, entry.citeText) : null,
         el("p", { class: "note" }, entry.reason),
@@ -67,6 +72,11 @@ export function askForSources(claim, data) {
               "Continue without these sources"
             )
           : null,
+        el(
+          "button",
+          { id: "try-again-sources", class: "button secondary", onclick: () => close({ action: "retry" }) },
+          "Try reading them again"
+        ),
         el(
           "button",
           {

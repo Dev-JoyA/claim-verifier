@@ -8,7 +8,7 @@ import { extractClaims, extractReferences, splitSentences } from "../src/extract
 import { fetchSourceText } from "../src/fetchSource.js";
 import { fetchArticle, randomTitle, searchTitles, suggestTitles } from "../src/wikipedia.js";
 import { importClaims, seededShuffle } from "../src/importArticle.js";
-import { PAGE } from "./fixtures.js";
+import { PAGE, DIANA } from "./fixtures.js";
 
 
 const response = (body, { ok = true, status = 200, type = "text/html" } = {}) => ({
@@ -168,4 +168,40 @@ test("fetchArticle passes Wikipedia's error code along", async () => {
     () => fetchArticle({ title: "Nope" }, fakeFetch),
     (error) => error.code === "missingtitle"
   );
+});
+
+test("splitSentences keeps a quotation together and splits where a footnote ends a sentence", () => {
+  const quote = 'He said, "It is fine. It really is." Then he left.';
+  assert.deepEqual(splitSentences(quote), ['He said, "It is fine. It really is."', "Then he left."]);
+
+  const marker = "It ran on SiriusXM\u00018\u0002 The show was loud,\u00019\u0002 and brief.";
+  assert.deepEqual(splitSentences(marker), [
+    "It ran on SiriusXM\u00018\u0002",
+    "The show was loud,\u00019\u0002 and brief.",
+  ]);
+
+  const lowercase = "It ran on SiriusXM\u00018\u0002 and later moved.";
+  assert.equal(splitSentences(lowercase).length, 1);
+  const comma = "Smith wrote,\u00018\u0002 Jones replied.";
+  assert.equal(splitSentences(comma).length, 1);
+});
+
+test("a real article is split into numbered claims with the right number of sources", () => {
+  const claims = extractClaims(DIANA);
+  assert.deepEqual(
+    claims.map((claim) => claim.refIds.length),
+    [1, 1, 1, 2, 1, 1, 2, 1]
+  );
+  assert.ok(claims[2].sentence.startsWith("Heather Findlay"));
+  assert.ok(claims[2].sentence.endsWith('alternative sexuality."'));
+  assert.equal(claims[5].sentence, "From 2006 to 2009 Cage was host of The Diana Cage Show on SiriusXM");
+  assert.ok(claims[6].sentence.startsWith("The show was celebrated"));
+  assert.deepEqual(claims[3].labels, ["[4]", "[5]"]);
+  assert.deepEqual(claims[6].labels, ["[9]", "[3]"]);
+  assert.equal(claims[2].refIds[0], claims[6].refIds[1]);
+});
+
+test("the same footnote twice in one sentence counts as one source", () => {
+  const twice = `<p>It happened in the year 1999 for sure.${"<sup class=\"reference\"><a href=\"#cite_note-1\">[1]</a></sup>".repeat(2)}</p>`;
+  assert.deepEqual(extractClaims(twice)[0].refIds, ["1"]);
 });
