@@ -1,12 +1,12 @@
 {
   "ai": {
     "rating": "not_supported",
-    "reasoning": "The source identifies Diana Cage as managing editor and quotes her saying she worked hard to make the magazine a realistic portrayal of dyke sex. However, it does not state or imply that the magazine expanded its representation of lesbian sex or sexual identity under her editorship.",
-    "intended_meaning": "During the period Diana Cage served as editor of On Our Backs, the publication broadened the scope of how lesbian sex and sexual identity were depicted.",
+    "reasoning": "The source identifies Diana Cage as the managing editor and quotes her saying she has worked to make the magazine a 'realistic portrayal of dyke sex'. However, the source does not state or indicate that the magazine expanded its representation of lesbian sex and sexual identity under her tenure.",
+    "intended_meaning": "During Diana Cage's tenure as editor of On Our Backs, the magazine broadened how it depicted lesbian sex and sexual identity.",
     "subclaims": [
       {
-        "text": "Diana Cage served as editor of On Our Backs.",
-        "origin": "context",
+        "text": "Diana Cage served as an editor of On Our Backs.",
+        "origin": "claim",
         "weight": "peripheral",
         "match_type": "explicit",
         "evidence_quote": "“I’m shocked, I can’t believe it,” says managing editor Diana Cage.",
@@ -14,16 +14,7 @@
         "location": "paragraph 5"
       },
       {
-        "text": "Under Cage's editorship, On Our Backs expanded its representation of lesbian sex.",
-        "origin": "claim",
-        "weight": "core",
-        "match_type": "absent",
-        "evidence_quote": "",
-        "source": 0,
-        "location": ""
-      },
-      {
-        "text": "Under Cage's editorship, On Our Backs expanded its representation of sexual identity.",
+        "text": "Under Cage's editorship, the magazine expanded its representation of lesbian sex and sexual identity.",
         "origin": "claim",
         "weight": "core",
         "match_type": "absent",
@@ -39,18 +30,13 @@
     "model": "gemini-3.8-flash",
     "condition": "full",
     "took_ms": {
-      "source": 3,
-      "ai": 90448
+      "source": 2,
+      "ai": 180586
     },
-    "at": "2026-10-25T23:17:57.240Z"
+    "at": "2026-10-31T15:17:31.213Z"
   },
   "review": "accepted",
-  "decision": {
-    "choice": "ai",
-    "at": "2026-10-25T23:19:20.354Z",
-    "previous_rating": "fully_supported",
-    "reason": "it make sense"
-  },
+  "decision": null,
   "my_reasoning": "it make sense",
   "my_evidence": [
     {
@@ -101,6 +87,20 @@
       "rating": "not_supported",
       "resolution": "ai",
       "reason": "it make sense"
+    },
+    {
+      "at": "2026-10-31T15:17:31.214Z",
+      "by": "ai",
+      "action": "reverify",
+      "rating": "not_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "at": "2026-10-31T15:31:04.295Z",
+      "by": "human",
+      "action": "accept",
+      "rating": "not_supported"
     }
   ],
   "id": "claim-004",
