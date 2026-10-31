@@ -10,6 +10,7 @@
     "import": "node --env-file-if-exists=.env src/importArticle.js",
     "validate": "node src/validate.js",
     "prompts": "node src/prompts.js",
+    "serve": "node --env-file-if-exists=.env src/serve.js",
     "check": "node --env-file-if-exists=.env src/check.js",
     "evaluate": "node --env-file-if-exists=.env src/evaluate.js",
     "format": "prettier --write .",

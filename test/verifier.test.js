@@ -3,7 +3,16 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { aggregate, cleanText, quoteInSource, verify, INVALID_REPLY } from "../src/verifier.js";
+import {
+  aggregate,
+  cleanText,
+  quoteInSource,
+  verify,
+  parseJson,
+  buildPrompt,
+  sourceSection,
+  INVALID_REPLY,
+} from "../src/verifier.js";
 import { nextId } from "../src/newClaim.js";
 import { checkItem } from "../src/validate.js";
 import { loadGold } from "../src/gold.js";
@@ -12,7 +21,6 @@ import { checkClaims } from "../src/check.js";
 import { GeminiClient, OllamaClient, CachedClient } from "../src/clients.js";
 import { writePrompts } from "../src/prompts.js";
 import { makeClient } from "../src/cli.js";
-import { buildPrompt } from "../src/verifier.js";
 
 const sub = (match_type, weight = "core") => ({ match_type, weight, text: "x" });
 const fakeAi = (reply) => ({
@@ -245,4 +253,82 @@ test("makeClient takes its defaults from environment variables", () => {
   assert.throws(() => makeClient(), /Pass --model/);
 
   delete process.env.AI_CLIENT;
+});
+
+test("parseJson accepts code fences and text around the JSON", () => {
+  assert.deepEqual(parseJson('```json\n{"a": 1}\n```'), { a: 1 });
+  assert.deepEqual(parseJson('Here you go: {"a": 1} Hope that helps.'), { a: 1 });
+  assert.throws(() => parseJson("no braces here"));
+});
+
+test("the prompt shows a valid JSON example", () => {
+  const prompt = buildPrompt({ id: "x", sentence: "s", context: "c", article_title: "t" }, "src", "full");
+  const example = prompt.slice(prompt.indexOf("{\n"), prompt.lastIndexOf("}\n") + 1);
+  assert.doesNotThrow(() => JSON.parse(example));
+  assert.ok(prompt.includes("No code fences"));
+});
+
+test("verify asks once more when the first reply is not JSON", async () => {
+  const replies = [
+    "Sorry, here is a story.",
+    JSON.stringify({
+      subclaims: [
+        { text: "a", weight: "core", match_type: "explicit", evidence_quote: "alpha beta" },
+      ],
+    }),
+  ];
+  const seenKeys = [];
+  const client = {
+    complete: async (prompt, key) => {
+      seenKeys.push(key);
+      return replies.shift();
+    },
+  };
+  const result = await verify(item, "alpha beta gamma", client, "full");
+  assert.equal(result.label, "fully_supported");
+  assert.deepEqual(seenKeys, ["full_claim-001", "full_claim-001_retry"]);
+});
+
+test("verify does not retry when retry is switched off", async () => {
+  let calls = 0;
+  const client = {
+    complete: async () => {
+      calls++;
+      return "nope";
+    },
+  };
+  const result = await verify(item, "src", client, "full", { retry: false });
+  assert.equal(result.label, INVALID_REPLY);
+  assert.equal(calls, 1);
+});
+
+test("sourceSection finds the text of one numbered source", () => {
+  const text = "[Source 1] a.example\nFirst text.\n\n[Source 2] b.example\nSecond text.";
+  assert.equal(sourceSection(text, 1).trim(), "First text.");
+  assert.equal(sourceSection(text, 2).trim(), "Second text.");
+  assert.equal(sourceSection(text, 3), "");
+});
+
+test("a quote must come from the source the AI names", async () => {
+  const text = "[Source 1] a.example\nThe bridge opened to traffic in 1932.\n\n[Source 2] b.example\nThe army used it in 1940.";
+  const reply = (source, quote) =>
+    JSON.stringify({
+      subclaims: [{ text: "a", weight: "core", match_type: "explicit", evidence_quote: quote, source }],
+    });
+  const client = (value) => ({ complete: async () => value });
+
+  const right = await verify(item, text, client(reply(1, "opened to traffic in 1932")), "full");
+  assert.equal(right.label, "fully_supported");
+
+  const wrongSource = await verify(item, text, client(reply(2, "opened to traffic in 1932")), "full");
+  assert.equal(wrongSource.label, "not_supported");
+  assert.equal(wrongSource.flags.length, 1);
+});
+
+test("a prompt for several sources explains how to judge them together", () => {
+  const several = "[Source 1] a\nOne.\n\n[Source 2] b\nTwo.";
+  const prompt = buildPrompt({ id: "x", sentence: "s", context: "c", article_title: "t" }, several, "full");
+  assert.ok(prompt.includes("cites several sources"));
+  const single = buildPrompt({ id: "x", sentence: "s", context: "c", article_title: "t" }, "[Source 1] a\nOne.", "full");
+  assert.ok(single.includes("Source text:"));
 });

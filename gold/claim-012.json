@@ -1,0 +1,58 @@
+{
+  "ai": {
+    "rating": "not_supported",
+    "reasoning": "The provided source is an article written by Diana Cage discussing language around sex toys, her book, and her work with Velvetpark. It does not mention GO Magazine or her being named one of its '100 Women We Love' in 2008.",
+    "intended_meaning": "In 2008, Diana Cage was included in GO Magazine's '100 Women We Love' list.",
+    "subclaims": [
+      {
+        "text": "In 2008 Diana Cage was named one of GO Magazine's '100 Women We Love'.",
+        "origin": "claim",
+        "weight": "core",
+        "match_type": "absent",
+        "evidence_quote": "",
+        "location": ""
+      }
+    ],
+    "flags": [],
+    "client": "gemini",
+    "model": "gemini-3.8-flash",
+    "condition": "full",
+    "took_ms": {
+      "source": 2,
+      "ai": 121833
+    },
+    "at": "2026-10-21T08:01:50.833Z"
+  },
+  "review": "accepted",
+  "my_reasoning": "",
+  "my_evidence": [],
+  "history": [
+    {
+      "at": "2026-10-21T08:01:50.833Z",
+      "by": "ai",
+      "action": "verify",
+      "rating": "not_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "at": "2026-10-21T08:06:17.239Z",
+      "by": "human",
+      "action": "accept",
+      "rating": "not_supported"
+    }
+  ],
+  "id": "claim-012",
+  "set": "app",
+  "article_title": "Diana Cage",
+  "mw_rev_id": 1371387365,
+  "ref_id": "cite_note-6",
+  "source_url": "",
+  "source_file": "sources/claim-012.txt",
+  "sentence": "In 2008 she was named one of GO Magazine's \"100 Women We Love.\"",
+  "context": "After leaving On Our Backs, Cage continued working in queer media as editor of Velvetpark and GO. She has also been a regular columnist for Girlfriends, Kitchen Sink, Shewired, Quartz, Frontiers, Good Vibes, Ourchart, and Velvetpark. In 2008 she was named one of GO Magazine's \"100 Women We Love.\"",
+  "my_rating": "",
+  "notes": "",
+  "cite_text": "",
+  "archive_url": ""
+}

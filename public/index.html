@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claim verifier</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>Claim verifier</h1>
+      <p id="ai-status" class="ai-status"></p>
+    </header>
+
+    <main>
+      <section class="module">
+        <div class="section-header">
+          <h2>Open a Wikipedia article</h2>
+        </div>
+        <div class="module-body">
+          <div class="row">
+            <label class="field grow">Article title
+              <input id="title" type="text" list="title-suggestions" autocomplete="off" placeholder="For example: Diana Cage" />
+            </label>
+            <datalist id="title-suggestions"></datalist>
+            <label class="field">Revision id (optional)
+              <input id="oldid" type="text" placeholder="For example: 1234567" />
+            </label>
+            <button id="load-btn" class="button">Load article</button>
+          </div>
+          <p id="message" class="message" role="status"></p>
+        </div>
+      </section>
+
+      <div id="workspace" hidden>
+        <section class="module">
+          <div class="section-header">
+            <h2 id="article-heading"></h2>
+            <p id="article-links" class="links"></p>
+          </div>
+          <div class="module-body">
+            <div id="stats" class="stats"></div>
+            <p class="note">Verdicts are saved on this computer, for this exact revision of the article.</p>
+          </div>
+        </section>
+
+        <nav class="tabs" role="tablist" aria-label="Views">
+          <button id="tab-claims-btn" class="tab active" role="tab" data-tab="claims" aria-selected="true">Claims</button>
+          <button id="tab-summary-btn" class="tab" role="tab" data-tab="summary" aria-selected="false">Summary by rating</button>
+          <button id="tab-compare-btn" class="tab" role="tab" data-tab="compare" aria-selected="false">Human vs AI</button>
+        </nav>
+
+        <section id="tab-claims" class="tab-panel">
+          <div class="module">
+            <div class="section-header"><h3>Verify claims</h3></div>
+            <div class="module-body">
+              <div class="row">
+                <label class="field">Claim numbers
+                  <input id="range" type="text" placeholder="1-5, 8, 12-14" />
+                </label>
+                <button id="verify-range" class="button">Verify these</button>
+                <button id="verify-checked" class="button">Verify checked</button>
+              </div>
+              <div class="row">
+                <label class="field">How many random claims
+                  <input id="random-count" type="number" min="1" value="4" />
+                </label>
+                <button id="verify-random" class="button secondary">Verify random unverified</button>
+                <button id="verify-all" class="button secondary">Verify all unverified</button>
+              </div>
+              <div class="row">
+                <label class="field">Show
+                  <select id="filter">
+                    <option value="all">All claims</option>
+                    <option value="unverified">Unverified</option>
+                    <option value="review">AI suggestions to review</option>
+                    <option value="verified">Verified</option>
+                  </select>
+                </label>
+                <button id="clear-checked" class="button secondary">Clear checkmarks</button>
+                <span id="count" class="note"></span>
+              </div>
+              <p id="progress" class="progress" role="status" hidden></p>
+            </div>
+          </div>
+          <div id="problems"></div>
+          <section id="review" class="module" hidden></section>
+          <section id="claims"></section>
+        </section>
+
+        <section id="tab-summary" class="tab-panel" hidden></section>
+        <section id="tab-compare" class="tab-panel" hidden></section>
+      </div>
+    </main>
+
+    <dialog id="dialog"></dialog>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

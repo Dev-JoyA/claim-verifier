@@ -1,4 +1,109 @@
 {
+  "ai": {
+    "rating": "partially_supported",
+    "reasoning": "The cited source only identifies Diana Cage as the editor of the lesbian magazine On Our Backs. It makes no mention of her authorship or editorship of eight books, the Lesbian Sex Bible, the Lambda Literary Award, or her editorial roles at Velvetpark and GO magazine.",
+    "intended_meaning": "Diana Cage has authored and edited eight books on sex and relationships, such as the award-winning Lesbian Sex Bible, and served as an editor for prominent lesbian publications of the 2000s, including On Our Backs, Velvetpark, and GO magazine.",
+    "subclaims": [
+      {
+        "text": "Diana Cage is the author and editor of eight books on sex and relationships, including the Lambda Literary Award–winning Lesbian Sex Bible.",
+        "origin": "claim",
+        "weight": "core",
+        "match_type": "absent",
+        "evidence_quote": "",
+        "source": 0,
+        "location": ""
+      },
+      {
+        "text": "Diana Cage served as an editor of the lesbian magazine On Our Backs.",
+        "origin": "claim",
+        "weight": "core",
+        "match_type": "explicit",
+        "evidence_quote": "Diana Cage, 34, the editor of the lesbian magazine On Our Backs",
+        "source": 1,
+        "location": "paragraph beginning 'New York is to San Francisco'"
+      },
+      {
+        "text": "Diana Cage served as editor of other influential lesbian publications including Velvetpark and GO magazine.",
+        "origin": "claim",
+        "weight": "core",
+        "match_type": "absent",
+        "evidence_quote": "",
+        "source": 0,
+        "location": ""
+      }
+    ],
+    "flags": [],
+    "missing_sources": [],
+    "source_count": 1,
+    "client": "gemini",
+    "model": "gemini-3.8-flash",
+    "condition": "full",
+    "took_ms": {
+      "source": 2,
+      "ai": 53304
+    },
+    "at": "2026-10-25T23:12:35.782Z"
+  },
+  "review": "accepted",
+  "decision": null,
+  "my_reasoning": "l;m'lm,';,",
+  "my_evidence": [
+    {
+      "quote": "Diana Cage, 34, the editor of the lesbian magazine On Our Backs"
+    }
+  ],
+  "history": [
+    {
+      "at": "2026-10-21T07:42:31.609Z",
+      "by": "ai",
+      "action": "verify",
+      "rating": "partially_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "at": "2026-10-21T07:43:52.098Z",
+      "by": "human",
+      "action": "accept",
+      "rating": "partially_supported"
+    },
+    {
+      "at": "2026-10-25T18:01:42.819Z",
+      "by": "human",
+      "action": "rate",
+      "rating": "partially_supported",
+      "resolution": "ai",
+      "reason": "l;m'lm,';,"
+    },
+    {
+      "at": "2026-10-25T23:08:59.797Z",
+      "by": "ai",
+      "action": "reverify",
+      "rating": "partially_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "at": "2026-10-25T23:10:54.020Z",
+      "by": "human",
+      "action": "accept",
+      "rating": "partially_supported"
+    },
+    {
+      "at": "2026-10-25T23:12:35.782Z",
+      "by": "ai",
+      "action": "reverify",
+      "rating": "partially_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "at": "2026-10-25T23:16:19.053Z",
+      "by": "human",
+      "action": "accept",
+      "rating": "partially_supported"
+    }
+  ],
   "id": "claim-003",
   "set": "regular",
   "article_title": "Diana Cage",
@@ -8,9 +113,19 @@
   "source_file": "sources/claim-003.txt",
   "sentence": "She is author and editor of eight books on sex and relationships, including the Lambda Literary Award–winning Lesbian Sex Bible, and served as editor of several influential lesbian publications of the 2000s, including On Our Backs, Velvetpark, and GO magazine.",
   "context": "Diana Cage (born July 16, 1979) is an American author, editor, radio personality, and academic whose work focuses on sexuality, dating, intimacy, and queer culture. She is author and editor of eight books on sex and relationships, including the Lambda Literary Award–winning Lesbian Sex Bible, and served as editor of several influential lesbian publications of the 2000s, including On Our Backs, Velvetpark, and GO magazine. From 2006 to 2009 she hosted The Diana Cage Show on SiriusXM, an advice and call-in show focused on lesbian sex, dating, and queer life.",
-  "my_rating": "fully_supported",
+  "my_rating": "partially_supported",
   "notes": "",
   "cite_text": "",
   "archive_url": "",
-  "import_note": "no URL in the reference (book or offline source)"
+  "import_note": "no URL in the reference (book or offline source)",
+  "sources": [
+    {
+      "index": 1,
+      "ref_id": "1",
+      "url": "",
+      "archive_url": "",
+      "cite_text": "",
+      "file": "claim-003.s1.txt"
+    }
+  ]
 }

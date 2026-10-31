@@ -5,6 +5,8 @@ import { verify, RUBRIC } from "./verifier.js";
 import { getFlag, makeClient } from "./cli.js";
 import { fromRoot } from "./paths.js";
 
+const hasRating = (item) => String(item.my_rating ?? "").trim() !== "";
+
 const POSITION = Object.fromEntries(RUBRIC.labelOrder.map((label, index) => [label, index]));
 
 export function agree(toolLabel, yourLabel) {
@@ -15,7 +17,12 @@ export function agree(toolLabel, yourLabel) {
   return { exact: false, adjacent: oneStepApart };
 }
 
-export async function run(client, conditions, items = loadGold(), readSourceText = readSource) {
+export async function run(
+  client,
+  conditions,
+  items = loadGold().filter(hasRating),
+  readSourceText = readSource
+) {
   const report = {};
 
   for (const condition of conditions) {
@@ -26,6 +33,7 @@ export async function run(client, conditions, items = loadGold(), readSourceText
         id: item.id,
         gold: item.my_rating,
         tool: result.label,
+        reasoning: result.reasoning ?? "",
         ...agree(result.label, item.my_rating),
         flags: result.flags,
       });
@@ -57,6 +65,7 @@ async function main() {
     );
     for (const row of result.rows.filter((r) => !r.exact)) {
       console.log(`   ${row.id}: you=${row.gold} tool=${row.tool} ${row.flags.join("; ")}`);
+      if (row.reasoning) console.log(`      tool says: ${row.reasoning.slice(0, 200)}`);
     }
   }
 }

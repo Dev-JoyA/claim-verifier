@@ -17,7 +17,11 @@ export async function fetchArticle({ title, oldid }, fetchImpl = fetch) {
     { action: "parse", prop: "text|revid", redirects: "1", ...which },
     fetchImpl
   );
-  if (data.error) throw new Error(`Wikipedia API: ${data.error.info}`);
+  if (data.error) {
+    const error = new Error(`Wikipedia API: ${data.error.info}`);
+    error.code = data.error.code;
+    throw error;
+  }
   return { title: data.parse.title, revid: data.parse.revid, html: data.parse.text };
 }
 
@@ -27,4 +31,26 @@ export async function randomTitle(fetchImpl = fetch) {
     fetchImpl
   );
   return data.query.random[0].title;
+}
+
+export async function searchTitles(query, limit = 5, fetchImpl = fetch) {
+  const data = await getJson(
+    {
+      action: "query",
+      list: "search",
+      srsearch: query,
+      srnamespace: "0",
+      srlimit: String(limit),
+    },
+    fetchImpl
+  );
+  return (data.query?.search ?? []).map((hit) => hit.title);
+}
+
+export async function suggestTitles(query, fetchImpl = fetch) {
+  const data = await getJson(
+    { action: "opensearch", search: query, limit: "8", namespace: "0" },
+    fetchImpl
+  );
+  return Array.isArray(data) && Array.isArray(data[1]) ? data[1] : [];
 }

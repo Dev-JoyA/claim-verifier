@@ -11,13 +11,17 @@ export function getFlag(name, fallback) {
   return position > -1 ? process.argv[position + 1] : fallback;
 }
 
+export function makeBareClient(choice, model) {
+  if (choice === "gemini") return new GeminiClient(model);
+  if (choice === "ollama") return new OllamaClient(model);
+  if (choice === "anthropic") return new AnthropicClient(model);
+  throw new Error(`Unknown client "${choice}". Use manual, ollama, gemini or anthropic.`);
+}
+
 export function makeClient() {
   const choice = getFlag("client", process.env.AI_CLIENT || "manual");
   if (choice === "manual") return new ManualClient();
 
   const model = getFlag("model", process.env.AI_MODEL);
-  if (choice === "gemini") return new CachedClient(new GeminiClient(model));
-  if (choice === "ollama") return new CachedClient(new OllamaClient(model));
-  if (choice === "anthropic") return new CachedClient(new AnthropicClient(model));
-  throw new Error(`Unknown client "${choice}". Use manual, ollama, gemini or anthropic.`);
+  return new CachedClient(makeBareClient(choice, model));
 }

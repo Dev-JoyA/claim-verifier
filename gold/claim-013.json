@@ -1,0 +1,47 @@
+{
+  "ai": null,
+  "review": "none",
+  "decision": null,
+  "my_reasoning": "",
+  "my_evidence": [],
+  "history": [],
+  "id": "claim-013",
+  "set": "app",
+  "article_title": "Diana Cage",
+  "mw_rev_id": 1371387365,
+  "ref_id": "cite_note-8",
+  "source_url": "",
+  "source_file": "sources/claim-013.txt",
+  "sentence": "From 2006 to 2009 Cage was host of The Diana Cage Show on SiriusXM The show was celebrated for Cage's bombastic monologues, incisive commentary on current events, and unflinching advice on love and sex.",
+  "context": "From 2006 to 2009 Cage was host of The Diana Cage Show on SiriusXM The show was celebrated for Cage's bombastic monologues, incisive commentary on current events, and unflinching advice on love and sex.",
+  "my_rating": "",
+  "notes": "",
+  "cite_text": "",
+  "archive_url": "",
+  "sources": [
+    {
+      "index": 1,
+      "ref_id": "8",
+      "url": "",
+      "archive_url": "",
+      "cite_text": "",
+      "file": "claim-013.s1.txt"
+    },
+    {
+      "index": 2,
+      "ref_id": "9",
+      "url": "",
+      "archive_url": "",
+      "cite_text": "",
+      "file": "claim-013.s2.txt"
+    },
+    {
+      "index": 3,
+      "ref_id": "sfgate2005-3",
+      "url": "",
+      "archive_url": "",
+      "cite_text": "",
+      "file": "claim-013.s3.txt"
+    }
+  ]
+}

@@ -6,19 +6,10 @@ import path from "node:path";
 import { decodeEntities, htmlToText } from "../src/htmlText.js";
 import { extractClaims, extractReferences, splitSentences } from "../src/extract.js";
 import { fetchSourceText } from "../src/fetchSource.js";
-import { fetchArticle, randomTitle } from "../src/wikipedia.js";
+import { fetchArticle, randomTitle, searchTitles, suggestTitles } from "../src/wikipedia.js";
 import { importClaims, seededShuffle } from "../src/importArticle.js";
+import { PAGE } from "./fixtures.js";
 
-const PAGE = `
-<div class="mw-parser-output">
-<p><b>Example Bridge</b> is a steel arch bridge in Ohio. The bridge opened to traffic in 1932.<sup id="cite_ref-1" class="reference"><a href="#cite_note-1"><span class="cite-bracket">[</span>1<span class="cite-bracket">]</span></a></sup> The U.S. Army used it in 1940.<sup id="cite_ref-S_2-0" class="reference"><a href="#cite_note-Smith-2">[2]</a></sup><sup id="cite_ref-3" class="reference"><a href="#cite_note-3">[3]</a></sup> Locals loved it &amp; used it daily.</p>
-<p>A short one.<sup class="reference"><a href="#cite_note-1">[1]</a></sup></p>
-<ol class="references">
-<li id="cite_note-1"><span class="mw-cite-backlink"><a href="#cite_ref-1">^</a></span> <span class="reference-text"><a class="external text" href="https://example.com/archive?id=1&amp;x=2">City Archives</a>. <a href="https://web.archive.org/web/2020/https://example.com/archive">Archived</a>. <a href="/wiki/Special:BookSources/123">ISBN</a></span></li>
-<li id="cite_note-Smith-2"><span class="reference-text"><a class="external text" href="//doi.org/10.1/abc">Smith</a></span></li>
-<li id="cite_note-3"><span class="reference-text">Jones, A Book. <a href="https://en.wikipedia.org/wiki/Special:BookSources/978">ISBN 978</a></span></li>
-</ol>
-</div>`;
 
 const response = (body, { ok = true, status = 200, type = "text/html" } = {}) => ({
   ok,
@@ -151,4 +142,30 @@ test("importClaims records why a source is missing", async () => {
   const entry = JSON.parse(fs.readFileSync(path.join(goldDir, "claim-001.json"), "utf8"));
   assert.equal(entry.import_note, "source not fetched: HTTP 403");
   assert.equal(fs.readFileSync(path.join(sourcesDir, "claim-001.txt"), "utf8"), "");
+});
+
+test("searchTitles and suggestTitles read the Wikipedia answers", async () => {
+  const fakeFetch = async (url) => ({
+    ok: true,
+    json: async () =>
+      url.includes("opensearch")
+        ? ["dia", ["Diana Cage", "Diana Ross"], [], []]
+        : { query: { search: [{ title: "Diana Cage" }, { title: "Cage" }] } },
+  });
+  assert.deepEqual(await searchTitles("diana cage", 5, fakeFetch), ["Diana Cage", "Cage"]);
+  assert.deepEqual(await suggestTitles("dia", fakeFetch), ["Diana Cage", "Diana Ross"]);
+  const emptyFetch = async () => ({ ok: true, json: async () => ({}) });
+  assert.deepEqual(await searchTitles("x", 5, emptyFetch), []);
+  assert.deepEqual(await suggestTitles("x", emptyFetch), []);
+});
+
+test("fetchArticle passes Wikipedia's error code along", async () => {
+  const fakeFetch = async () => ({
+    ok: true,
+    json: async () => ({ error: { code: "missingtitle", info: "The page you specified doesn't exist." } }),
+  });
+  await assert.rejects(
+    () => fetchArticle({ title: "Nope" }, fakeFetch),
+    (error) => error.code === "missingtitle"
+  );
 });

@@ -10,6 +10,23 @@ const MIN_PIECE_LENGTH = 4;
 
 export const INVALID_REPLY = "invalid_reply";
 
+const FULL_EXAMPLE = {
+  intended_meaning: "One sentence saying what the claim is meant to say.",
+  subclaims: [
+    {
+      text: "One fact inside the claim",
+      origin: "claim",
+      weight: "core",
+      match_type: "explicit",
+      evidence_quote: "Exact words copied from the source",
+      source: 1,
+      location: "Where in the source",
+      source: 1,
+    },
+  ],
+  reasoning: "Two or three sentences explaining the judgement.",
+};
+
 export function cleanText(text) {
   return text
     .normalize("NFKC")
@@ -66,6 +83,50 @@ export function aggregate(subclaims) {
   return "partially_supported";
 }
 
+function outputInstructions(condition) {
+  if (condition === "full") {
+    return [
+      "Reply with only one JSON object shaped like this example. Use your own values:",
+      JSON.stringify(FULL_EXAMPLE, null, 2),
+      `origin is "claim" or "context". weight is "core" or "peripheral". ` +
+        `match_type is one of ${JSON.stringify(RUBRIC.matchTypes)}.`,
+      'Use "" for evidence_quote and location when match_type is "absent".',
+      "source is the number N of the [Source N] that the evidence comes from. Use 0 when match_type is \"absent\".",
+      "No code fences and no text before or after the JSON.",
+    ].join("\n");
+  }
+
+  const example = { label: RUBRIC.labels[0], reasoning: "Two or three sentences explaining." };
+  return [
+    "Reply with only one JSON object shaped like this example. Use your own values:",
+    JSON.stringify(example, null, 2),
+    `label is one of ${JSON.stringify(RUBRIC.labels)}.`,
+    "No code fences and no text before or after the JSON.",
+  ].join("\n");
+}
+
+function sourceBlock(text) {
+  const sourceCount = (text.match(/^\[Source \d+\]/gm) ?? []).length;
+  if (sourceCount < 2) return `Source text:\n${text}`;
+
+  const intro =
+    "The claim cites several sources. Each one starts with [Source N]. Judge them together as a " +
+    "whole: the claim can be supported by one source or by several together. Judge only the " +
+    "sources that could be read. A source marked as unreadable is missing, so do not guess what " +
+    "it says, and say in your reasoning if the claim might depend on it.";
+  return `${intro}\n\n${text}`;
+}
+
+export function sourceSection(text, number) {
+  const marks = [...text.matchAll(/^\[Source (\d+)\][^\n]*\n/gm)];
+  const position = marks.findIndex((mark) => Number(mark[1]) === number);
+  if (position === -1) return "";
+
+  const start = marks[position].index + marks[position][0].length;
+  const end = marks[position + 1]?.index ?? text.length;
+  return text.slice(start, end);
+}
+
 export function buildPrompt(item, source, condition) {
   const parts = [
     "You check whether a cited source supports a claim from a Wikipedia article.",
@@ -78,52 +139,60 @@ export function buildPrompt(item, source, condition) {
   }
 
   parts.push(`Claim:\n${item.sentence}`);
-  parts.push(`Source text:\n${source}`);
+  parts.push(sourceBlock(source));
 
   if (condition === "full") {
     const rules = RUBRIC.rules.map((rule) => `- ${rule}`).join("\n");
     parts.push(`Rules:\n${rules}`);
-    parts.push(
-      'Return JSON only: {"intended_meaning": str, "subclaims": [{"text": str, ' +
-        '"origin": "claim|context", "weight": "core|peripheral", ' +
-        `"match_type": one of ${JSON.stringify(RUBRIC.matchTypes)}, ` +
-        '"evidence_quote": str, "location": str}], "reasoning": str}'
-    );
-  } else {
-    const labels = JSON.stringify(RUBRIC.labels);
-    parts.push(`Return JSON only: {"label": one of ${labels}, "reasoning": str}`);
   }
 
+  parts.push(outputInstructions(condition));
   return parts.join("\n\n");
 }
 
 export function parseJson(text) {
-  const withoutFences = text
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```\s*$/, "")
-    .trim();
-  return JSON.parse(withoutFences);
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch (firstError) {
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start === -1 || end <= start) throw firstError;
+    return JSON.parse(trimmed.slice(start, end + 1));
+  }
 }
 
 function invalidReply(reason) {
   return { label: INVALID_REPLY, flags: [reason] };
 }
 
-export async function verify(item, source, client, condition = "full") {
+async function askForJson(client, prompt, key, retry) {
+  const first = await client.complete(prompt, key);
+  try {
+    return { parsed: parseJson(first) };
+  } catch (error) {
+    if (!retry) return { failure: `reply is not valid JSON: ${error.message}` };
+
+    const again =
+      `${prompt}\n\nYour previous reply was not valid JSON (${error.message}). ` +
+      "Reply again with only the JSON object.";
+    const second = await client.complete(again, `${key}_retry`);
+    try {
+      return { parsed: parseJson(second) };
+    } catch (secondError) {
+      return { failure: `reply is not valid JSON: ${secondError.message}` };
+    }
+  }
+}
+
+export async function verify(item, source, client, condition = "full", { retry = true } = {}) {
   if (!source || !source.trim()) {
     return { label: "source_unavailable", flags: ["no_source_text"] };
   }
 
   const prompt = buildPrompt(item, source, condition);
-  const reply = await client.complete(prompt, `${condition}_${item.id}`);
-
-  let parsed;
-  try {
-    parsed = parseJson(reply);
-  } catch (error) {
-    return invalidReply(`reply is not valid JSON: ${error.message}`);
-  }
+  const { parsed, failure } = await askForJson(client, prompt, `${condition}_${item.id}`, retry);
+  if (failure) return invalidReply(failure);
 
   if (condition !== "full") {
     if (!RUBRIC.labels.includes(parsed.label)) {
@@ -138,8 +207,10 @@ export async function verify(item, source, client, condition = "full") {
 
   const flags = [];
   for (const subclaim of parsed.subclaims) {
+    const section = Number.isInteger(subclaim.source) ? sourceSection(source, subclaim.source) : "";
+    const haystack = section.trim() ? section : source;
     const needsEvidence = subclaim.match_type !== "absent";
-    if (needsEvidence && !quoteInSource(subclaim.evidence_quote ?? "", source)) {
+    if (needsEvidence && !quoteInSource(subclaim.evidence_quote ?? "", haystack)) {
       flags.push(`quote_not_found: ${String(subclaim.text).slice(0, 40)}`);
       subclaim.match_type = "absent";
     }

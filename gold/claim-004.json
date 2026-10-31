@@ -1,4 +1,108 @@
 {
+  "ai": {
+    "rating": "not_supported",
+    "reasoning": "The source identifies Diana Cage as managing editor and quotes her saying she worked hard to make the magazine a realistic portrayal of dyke sex. However, it does not state or imply that the magazine expanded its representation of lesbian sex or sexual identity under her editorship.",
+    "intended_meaning": "During the period Diana Cage served as editor of On Our Backs, the publication broadened the scope of how lesbian sex and sexual identity were depicted.",
+    "subclaims": [
+      {
+        "text": "Diana Cage served as editor of On Our Backs.",
+        "origin": "context",
+        "weight": "peripheral",
+        "match_type": "explicit",
+        "evidence_quote": "“I’m shocked, I can’t believe it,” says managing editor Diana Cage.",
+        "source": 1,
+        "location": "paragraph 5"
+      },
+      {
+        "text": "Under Cage's editorship, On Our Backs expanded its representation of lesbian sex.",
+        "origin": "claim",
+        "weight": "core",
+        "match_type": "absent",
+        "evidence_quote": "",
+        "source": 0,
+        "location": ""
+      },
+      {
+        "text": "Under Cage's editorship, On Our Backs expanded its representation of sexual identity.",
+        "origin": "claim",
+        "weight": "core",
+        "match_type": "absent",
+        "evidence_quote": "",
+        "source": 0,
+        "location": ""
+      }
+    ],
+    "flags": [],
+    "missing_sources": [],
+    "source_count": 1,
+    "client": "gemini",
+    "model": "gemini-3.8-flash",
+    "condition": "full",
+    "took_ms": {
+      "source": 3,
+      "ai": 90448
+    },
+    "at": "2026-10-25T23:17:57.240Z"
+  },
+  "review": "accepted",
+  "decision": {
+    "choice": "ai",
+    "at": "2026-10-25T23:19:20.354Z",
+    "previous_rating": "fully_supported",
+    "reason": "it make sense"
+  },
+  "my_reasoning": "it make sense",
+  "my_evidence": [
+    {
+      "quote": "“I’m shocked, I can’t believe it,” says managing editor Diana Cage."
+    }
+  ],
+  "history": [
+    {
+      "at": "2026-10-21T07:52:15.780Z",
+      "by": "ai",
+      "action": "verify",
+      "rating": "not_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "at": "2026-10-21T07:55:04.946Z",
+      "by": "human",
+      "action": "accept",
+      "rating": "not_supported"
+    },
+    {
+      "at": "2026-10-25T18:02:01.194Z",
+      "by": "human",
+      "action": "decide",
+      "resolution": "human",
+      "rating": "fully_supported",
+      "reason": ";,l[]l[]"
+    },
+    {
+      "at": "2026-10-25T23:17:57.240Z",
+      "by": "ai",
+      "action": "reverify",
+      "rating": "not_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "at": "2026-10-25T23:18:33.854Z",
+      "by": "human",
+      "action": "accept",
+      "rating": "not_supported"
+    },
+    {
+      "at": "2026-10-25T23:19:20.354Z",
+      "by": "human",
+      "action": "rate",
+      "rating": "not_supported",
+      "resolution": "ai",
+      "reason": "it make sense"
+    }
+  ],
   "id": "claim-004",
   "set": "regular",
   "article_title": "Diana Cage",
@@ -8,9 +112,19 @@
   "source_file": "sources/claim-004.txt",
   "sentence": "Under her editorship, the magazine expanded its representation of lesbian sex and sexual identity.",
   "context": "Cage began writing about sex and culture while interning at the San Francisco-based magazine Future Sex. In 2000 she joined On Our Backs, the long-running lesbian erotica magazine founded in 1984, and served as its editor until 2005. Under her editorship, the magazine expanded its representation of lesbian sex and sexual identity.",
-  "my_rating": "fully_supported",
+  "my_rating": "not_supported",
   "notes": "",
   "cite_text": "",
   "archive_url": "",
-  "import_note": "no URL in the reference (book or offline source)"
+  "import_note": "no URL in the reference (book or offline source)",
+  "sources": [
+    {
+      "index": 1,
+      "ref_id": "2",
+      "url": "",
+      "archive_url": "",
+      "cite_text": "",
+      "file": "claim-004.s1.txt"
+    }
+  ]
 }

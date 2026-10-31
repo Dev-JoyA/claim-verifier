@@ -1,0 +1,105 @@
+{
+  "ai": {
+    "rating": "not_supported",
+    "reasoning": "Source 1 is unreadable text, so the claim may depend on it. Source 2 is an article written by Diana Cage herself and does not contain the quote 'unapologetic pioneer' or praise describing her as a pioneer in progressive, sex-positive lesbian culture.",
+    "intended_meaning": "Diana Cage has received praise describing her as an 'unapologetic pioneer' in developing progressive and sex-positive lesbian culture.",
+    "subclaims": [
+      {
+        "text": "Cage has been praised as an 'unapologetic pioneer'.",
+        "origin": "claim",
+        "weight": "core",
+        "match_type": "absent",
+        "evidence_quote": "",
+        "source": 0,
+        "location": ""
+      },
+      {
+        "text": "The praise characterized her role in the evolution of progressive, sex-positive lesbian culture.",
+        "origin": "claim",
+        "weight": "core",
+        "match_type": "absent",
+        "evidence_quote": "",
+        "source": 0,
+        "location": ""
+      }
+    ],
+    "flags": [],
+    "missing_sources": [],
+    "source_count": 2,
+    "client": "gemini",
+    "model": "gemini-3.8-flash",
+    "condition": "full",
+    "took_ms": {
+      "source": 2,
+      "ai": 95765
+    },
+    "at": "2026-10-25T23:25:08.361Z"
+  },
+  "review": "pending",
+  "decision": null,
+  "my_reasoning": "",
+  "my_evidence": [],
+  "history": [
+    {
+      "at": "2026-10-21T07:59:09.042Z",
+      "by": "ai",
+      "action": "verify",
+      "rating": "not_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "at": "2026-10-25T23:22:11.914Z",
+      "by": "ai",
+      "action": "reverify",
+      "rating": "not_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "at": "2026-10-25T23:22:53.165Z",
+      "by": "human",
+      "action": "accept",
+      "rating": "not_supported"
+    },
+    {
+      "at": "2026-10-25T23:25:08.361Z",
+      "by": "ai",
+      "action": "reverify",
+      "rating": "not_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    }
+  ],
+  "id": "claim-010",
+  "set": "app",
+  "article_title": "Diana Cage",
+  "mw_rev_id": 1371387365,
+  "ref_id": "cite_note-5",
+  "source_url": "",
+  "source_file": "sources/claim-010.txt",
+  "sentence": "Cage has likewise been praised as an \"unapologetic pioneer\" in the evolution of progressive, sex-positive lesbian culture.",
+  "context": "Heather Findlay, publisher of both On Our Backs and Girlfriends (magazine), praised Cage's \"lack of self censorship\" as an editor, saying, \"[Cage] is not uptight about all forms of lesbian sexual expression. She really has no prejudgments about alternative sexuality.\" Cage has likewise been praised as an \"unapologetic pioneer\" in the evolution of progressive, sex-positive lesbian culture.",
+  "my_rating": "",
+  "notes": "",
+  "cite_text": "",
+  "archive_url": "",
+  "sources": [
+    {
+      "index": 1,
+      "ref_id": "4",
+      "url": "",
+      "archive_url": "",
+      "cite_text": "",
+      "file": "claim-010.s1.txt"
+    },
+    {
+      "index": 2,
+      "ref_id": "5",
+      "url": "",
+      "archive_url": "",
+      "cite_text": "",
+      "file": "claim-010.s2.txt"
+    }
+  ]
+}

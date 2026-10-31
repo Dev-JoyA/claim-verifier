@@ -1,0 +1,31 @@
+{
+  "ai": null,
+  "review": "none",
+  "decision": null,
+  "my_reasoning": "",
+  "my_evidence": [],
+  "history": [],
+  "id": "claim-016",
+  "set": "app",
+  "article_title": "Diana Cage",
+  "mw_rev_id": 1371387365,
+  "ref_id": "cite_note-12",
+  "source_url": "",
+  "source_file": "sources/claim-016.txt",
+  "sentence": "Cage's The Lesbian Sex Bible: The New Guide to Sexual Love for Same-Sex Couples (Quiver/Hachette, 2014) won a 2015 Lambda Literary Award.",
+  "context": "Cage's The Lesbian Sex Bible: The New Guide to Sexual Love for Same-Sex Couples (Quiver/Hachette, 2014) won a 2015 Lambda Literary Award.",
+  "my_rating": "",
+  "notes": "",
+  "cite_text": "",
+  "archive_url": "",
+  "sources": [
+    {
+      "index": 1,
+      "ref_id": "12",
+      "url": "",
+      "archive_url": "",
+      "cite_text": "",
+      "file": "claim-016.s1.txt"
+    }
+  ]
+}

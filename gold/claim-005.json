@@ -1,4 +1,48 @@
 {
+  "ai": {
+    "rating": "fully_supported",
+    "reasoning": "The source directly quotes Heather Findlay making this exact statement about Diana Cage. The claim directly matches the words in the source.",
+    "intended_meaning": "Heather Findlay stated that Diana Cage really has no prejudgments about alternative sexuality.",
+    "subclaims": [
+      {
+        "text": "Heather Findlay said that Diana Cage really has no prejudgments about alternative sexuality.",
+        "origin": "claim",
+        "weight": "core",
+        "match_type": "explicit",
+        "evidence_quote": "\"She is not uptight about all forms of lesbian sexual expression. She really has no prejudgments about alternative sexuality,\" said Findlay",
+        "location": "around three-quarters through the article"
+      }
+    ],
+    "flags": [],
+    "client": "gemini",
+    "model": "gemini-3.8-flash",
+    "condition": "full",
+    "took_ms": {
+      "source": 1,
+      "ai": 166044
+    },
+    "at": "2026-10-21T07:48:25.246Z"
+  },
+  "review": "accepted",
+  "decision": null,
+  "my_reasoning": "",
+  "my_evidence": [],
+  "history": [
+    {
+      "at": "2026-10-21T07:48:25.246Z",
+      "by": "ai",
+      "action": "verify",
+      "rating": "fully_supported",
+      "client": "gemini",
+      "model": "gemini-3.8-flash"
+    },
+    {
+      "at": "2026-10-21T07:49:28.699Z",
+      "by": "human",
+      "action": "accept",
+      "rating": "fully_supported"
+    }
+  ],
   "id": "claim-005",
   "set": "regular",
   "article_title": "Diana Cage",
@@ -8,9 +52,19 @@
   "source_file": "sources/claim-005.txt",
   "sentence": "She really has no prejudgments about alternative sexuality.\"",
   "context": "Heather Findlay, publisher of both On Our Backs and Girlfriends (magazine), praised Cage's \"lack of self censorship\" as an editor, saying, \"[Cage] is not uptight about all forms of lesbian sexual expression. She really has no prejudgments about alternative sexuality.\" Cage has likewise been praised as an \"unapologetic pioneer\" in the evolution of progressive, sex-positive lesbian culture.",
-  "my_rating":"",
+  "my_rating": "",
   "notes": "",
   "cite_text": "",
   "archive_url": "",
-  "import_note": "no URL in the reference (book or offline source)"
+  "import_note": "no URL in the reference (book or offline source)",
+  "sources": [
+    {
+      "index": 1,
+      "ref_id": "sfgate2005-3",
+      "url": "",
+      "archive_url": "",
+      "cite_text": "",
+      "file": "claim-005.s1.txt"
+    }
+  ]
 }
